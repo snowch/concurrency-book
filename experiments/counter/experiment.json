@@ -1,0 +1,41 @@
+{
+  "name": "counter",
+  "title": "A shared counter",
+  "kernel": "counter.c",
+  "summary": "Every worker increments one shared counter, with a plain increment, an atomic one, two atomic halves, or one loop the compiler folds, and the page compares what the counter holds with what it should.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 1, "max": 16, "default": 2 },
+    { "name": "iterations", "label": "Increments per worker", "kind": "select",
+      "options": [1000, 10000, 100000, 1000000], "default": 1000000 },
+    { "name": "operation", "label": "Operation", "kind": "select",
+      "options": ["plain", "atomic", "split", "folded"], "default": "plain",
+      "hint": "plain: counter++. atomic: one atomic add. split: an atomic load, then an atomic store. folded: a loop the compiler sees whole." }
+  ],
+  "args": ["iterations", "operation"],
+  "results": [
+    { "name": "expected", "label": "Expected", "what": "workers times increments per worker" },
+    { "name": "observed", "label": "Observed", "what": "the counter after the last worker finished" },
+    { "name": "lost", "label": "Lost", "what": "expected minus observed" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": {
+    "program": "counter",
+    "what": "a model of each worker's load, add and store, interleaved by a schedule you choose"
+  },
+  "lowerings": [
+    { "name": "increment", "functions": ["increment"], "opt": "O2" },
+    { "name": "increment-unoptimised", "functions": ["increment"], "opt": "O0" },
+    { "name": "loop", "functions": ["increment_in_a_loop"], "opt": "O2" },
+    { "name": "increment-atomic", "functions": ["increment_atomic"], "opt": "O2",
+      "targets": ["wasm", "x86-64", "aarch64", "aarch64-lse", "riscv64"] },
+    { "name": "split", "functions": ["increment_split"], "opt": "O2" },
+    { "name": "run", "functions": ["cm_run"], "opt": "O2", "targets": ["wasm"] }
+  ],
+  "native": {
+    "args": "ITERATIONS OPERATION",
+    "example": "2 1000000 0",
+    "results": ["plain counter", "atomic counter"]
+  }
+}

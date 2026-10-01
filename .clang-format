@@ -1,0 +1,10 @@
+# The kernels are quoted in a book: short lines, braces where the eye expects them, and a short
+# function on one line, so a quoted step is as compact on a phone as it can be.
+BasedOnStyle: LLVM
+IndentWidth: 2
+ColumnLimit: 100
+AllowShortFunctionsOnASingleLine: All
+AllowShortLoopsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortBlocksOnASingleLine: Always
+BreakBeforeBraces: Attach

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" role="img" aria-labelledby="t">
+  <title id="t">Two threads each load, add to and store one shared counter; their operations interleave, and one store overwrites the other.</title>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1b2a35"/><stop offset="1" stop-color="#263a4a"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#c8791a"/>
+    </marker>
+  </defs>
+  <rect width="960" height="300" rx="12" fill="url(#bg)"/>
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif" font-size="15" fill="#dde4e8">
+    <text x="36" y="72" font-weight="600">Thread A</text>
+    <text x="36" y="196" font-weight="600">Thread B</text>
+    <text x="36" y="262" fill="#a7b8c1" font-size="13">time →</text>
+  </g>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" fill="#10171b" text-anchor="middle">
+    <rect x="150" y="48" width="110" height="38" rx="6" fill="#7fb2dd"/><text x="205" y="73">LOAD x</text>
+    <rect x="390" y="48" width="110" height="38" rx="6" fill="#7fb2dd"/><text x="445" y="73">ADD 1</text>
+    <rect x="630" y="48" width="110" height="38" rx="6" fill="#7fb2dd"/><text x="685" y="73">STORE x</text>
+    <rect x="270" y="172" width="110" height="38" rx="6" fill="#e0b46e"/><text x="325" y="197">LOAD x</text>
+    <rect x="510" y="172" width="110" height="38" rx="6" fill="#e0b46e"/><text x="565" y="197">ADD 1</text>
+    <rect x="770" y="172" width="110" height="38" rx="6" fill="#e0b46e"/><text x="825" y="197">STORE x</text>
+  </g>
+  <g stroke="#3d4b53" stroke-width="2" stroke-dasharray="4 5">
+    <line x1="150" y1="92" x2="150" y2="166"/>
+    <line x1="630" y1="92" x2="630" y2="166"/>
+  </g>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" text-anchor="middle">
+    <rect x="150" y="112" width="730" height="42" rx="8" fill="#14191c" stroke="#3d4b53" stroke-width="1.5"/>
+    <text x="205" y="139" fill="#a7b8c1">x</text>
+    <text x="445" y="139" fill="#a7b8c1">both read the same value</text>
+    <text x="760" y="139" fill="#e8756c">the second store overwrites the first</text>
+  </g>
+  <path d="M740 86 Q760 100 775 112" fill="none" stroke="#c8791a" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M825 172 Q830 160 845 154" fill="none" stroke="#c8791a" stroke-width="2.5" marker-end="url(#arrow)"/>
+</svg>

@@ -1,0 +1,88 @@
+# The book's table of contents, for MyST to parse and cross-check.
+#
+# MyST parses the pages and resolves every cross-reference (`myst build --strict`, no --html).
+# It does not render the site: scripts/build-site.py does, from the parse. The order here must
+# match tools/outline.py, and tests/test_book.py fails if the two disagree.
+version: 1
+project:
+  id: concurrency-book
+  title: Concurrency at the Metal
+  description: >-
+    Low-level concurrency, taught from executable behaviour down to the instruction. Races,
+    atomics, locks, memory ordering, cache coherence and lock-free algorithms, each as a tiny C
+    program you run on real threads in your browser, with the assembly it compiles to on x86-64,
+    AArch64 and RISC-V beside the result.
+  keywords: [concurrency, atomics, memory ordering, lock-free, webassembly, assembly, c]
+  authors:
+    - name: Chris Snow
+      url: https://snowch.github.io
+  github: https://github.com/snowch/concurrency-book
+  license:
+    content: CC-BY-NC-4.0
+    code: Apache-2.0
+  settings:
+    # The book prints no inline maths, and dollar signs in prose should stay dollar signs.
+    parser:
+      dollarmath: false
+  exclude:
+    - README.md
+    - PLAN.md
+    - CLAUDE.md
+    - AUTHORING_GUIDE.md
+    - STYLE.md
+    - NEXT_STEPS.md
+    - native/**
+    - _build/**
+    - node_modules/**
+  toc:
+    - file: cover.md
+    - file: index.md
+      title: Preface
+    - file: parts/instructions_and_races.md
+      children:
+        - file: chapters/what_x_plus_plus_does.md
+        - file: chapters/two_threads_one_variable.md
+        - file: chapters/atomic_operations.md
+        - file: chapters/compare_and_swap.md
+    - file: parts/building_and_breaking_locks.md
+      children:
+        - file: chapters/test_and_set_and_spinlocks.md
+        - file: chapters/from_spinlock_to_mutex.md
+        - file: chapters/the_compiler_is_part_of_the_story.md
+    - file: parts/memory_ordering.md
+      children:
+        - file: chapters/acquire_and_release.md
+        - file: chapters/relaxed_atomics.md
+        - file: chapters/sequential_consistency.md
+        - file: chapters/fences.md
+    - file: parts/hardware_reality.md
+      children:
+        - file: chapters/cache_coherence.md
+        - file: chapters/false_sharing.md
+        - file: chapters/store_buffers_and_visibility.md
+        - file: chapters/x86_is_not_the_model.md
+    - file: parts/lock_free_algorithms.md
+      children:
+        - file: chapters/lock_free_stack.md
+        - file: chapters/the_aba_problem.md
+        - file: chapters/memory_reclamation.md
+        - file: chapters/lock_free_queue.md
+        - file: chapters/rcu.md
+    - file: parts/performance_and_the_laboratory.md
+      children:
+        - file: chapters/contention_and_scalability.md
+        - file: chapters/webassembly_threads.md
+        - file: chapters/build_a_concurrency_lab.md
+        - file: chapters/from_wasm_to_machine_code.md
+        - file: chapters/diagnose_the_race.md
+    - title: Appendices
+      children:
+        - file: appendices/reproducing_at_a_desk.md
+        - file: appendices/the_experiments.md
+        - file: appendices/glossary.md
+
+# MyST needs a site block to write its parse (_build/site/content). It never renders with this
+# theme: scripts/build-site.py renders the site, and scripts/parse-book.sh tolerates the theme
+# download failing where there is no network.
+site:
+  template: book-theme
