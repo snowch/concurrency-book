@@ -155,6 +155,95 @@ async function exerciseCounter(page, base, label) {
   server.close();
 }
 
+// Part I and II's other experiments, driven live with server headers.
+{
+  const { server, base } = await serve(true);
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  const page = await context.newPage();
+  const errors = await watchErrors(page);
+  const settled = async (nth = 0, extra = "") => {
+    await page.waitForFunction(({ nth, extra }) => {
+      const l = document.querySelectorAll(".lab[data-experiment]")[nth];
+      return l && l.dataset.state === "done" && (!extra || l.dataset[extra.split("=")[0]] === extra.split("=")[1]);
+    }, { nth, extra }, { timeout: 90000 });
+    return page.locator(".lab[data-experiment]").nth(nth);
+  };
+  // ch04: compare-and-swap is exact and counts retries; the lock built from it is exact.
+  await page.goto(base + "compare-and-swap.html");
+  let lab = await settled(0);
+  check(num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")),
+    `ch04 cas: observed ${await lab.getAttribute("data-observed")} of ${await lab.getAttribute("data-expected")} (exact; ${await lab.getAttribute("data-retries")} retries)`);
+  check(num(await lab.getAttribute("data-most")) <= num(await lab.getAttribute("data-retries")), "ch04 cas: one worker's retries never exceed the total");
+  lab = await settled(1);
+  check(await lab.getAttribute("data-operation") === "lock" && num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")),
+    "ch04 lock: the counter under the compare-and-swap lock is exact");
+  // ch05: test-and-set is exact and spins; test-then-set is not a lock.
+  await page.goto(base + "test-and-set-and-spinlocks.html");
+  lab = await settled(0);
+  check(num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")), `ch05 tas: exact, ${await lab.getAttribute("data-spins")} spins`);
+  check(await lab.locator(".worker-bars .bar-row").count() === 4, "ch05: a spin bar per worker");
+  lab = await settled(1);
+  check(await lab.getAttribute("data-operation") === "broken" && num(await lab.getAttribute("data-observed")) <= num(await lab.getAttribute("data-expected")),
+    `ch05 broken: ${await lab.getAttribute("data-observed")} of ${await lab.getAttribute("data-expected")} (never more; lost ${num(await lab.getAttribute("data-expected")) - num(await lab.getAttribute("data-observed"))} here)`);
+  // ch06: the spinlock spins and never sleeps; the sleeping lock sleeps and never spins.
+  await page.goto(base + "from-spinlock-to-mutex.html");
+  lab = await settled(0);
+  check(num(await lab.getAttribute("data-sleeps")) === 0 && num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")), `ch06 spin: exact, ${await lab.getAttribute("data-spins")} spins, no sleeps`);
+  await lab.locator('select[name="operation"]').selectOption("sleep");
+  lab = await settled(0, "operation=sleep");
+  check(num(await lab.getAttribute("data-spins")) === 0 && num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")), `ch06 sleep: exact, ${await lab.getAttribute("data-sleeps")} sleeps, no spins`);
+  // ch07: the plain loop never ends and the run is stopped; the volatile loop ends on the flag.
+  await page.goto(base + "the-compiler-is-part-of-the-story.html");
+  lab = page.locator('.lab[data-experiment="compiler"]').first();
+  await page.waitForFunction(() => document.querySelector('.lab[data-experiment="compiler"]').dataset.state === "ready");
+  check(!(await lab.getAttribute("data-outcome")), "ch07: the panel does not run by itself");
+  await lab.locator("button.run-live").click();
+  await page.waitForFunction(() => document.querySelector('.lab[data-experiment="compiler"]').dataset.outcome === "timeout", null, { timeout: 30000 });
+  check(true, "ch07 plain: the run did not finish and the workers were stopped");
+  check((await lab.locator(".lab-timeout").innerText()).includes("never reads the flag again"), "ch07 plain: the panel says why");
+  await lab.locator('select[name="flag"]').selectOption("volatile");
+  await lab.locator("button.run-live").click();
+  await page.waitForFunction(() => document.querySelector('.lab[data-experiment="compiler"]').dataset.outcome === "returned", null, { timeout: 30000 });
+  check(num(await lab.getAttribute("data-seen")) === 1, "ch07 volatile: the loop ended on the flag");
+  check(errors.length === 0, `no page errors on ch04 to ch07${errors.length ? ": " + errors.join(" | ") : ""}`);
+  // ch08: a volatile handover counts stale reads; release and acquire never do.
+  await page.goto(base + "acquire-and-release.html");
+  lab = await settled(0);
+  check(num(await lab.getAttribute("data-trials")) === 100000 && num(await lab.getAttribute("data-stale")) >= 0,
+    `ch08 volatile: ${await lab.getAttribute("data-stale")} stale reads of 100000 (whatever this device allows)`);
+  lab = await settled(1);
+  check(await lab.getAttribute("data-ordering") === "release-acquire" && num(await lab.getAttribute("data-stale")) === 0, "ch08 release-acquire: no stale read");
+  await lab.locator('.lab-modes button[data-mode="trace"]').click();
+  await lab.locator(".stepper button", { hasText: "Run to the end" }).click();
+  check((await lab.locator(".stepper").getAttribute("data-trace-outcome")).includes("published"), "ch08 trace: with a release the reader sees the data");
+  // ch10: volatile accesses may load both zero; sequentially consistent ones never do.
+  await page.goto(base + "sequential-consistency.html");
+  lab = await settled(0);
+  check(num(await lab.getAttribute("data-trials")) === 100000, `ch10 volatile: ${await lab.getAttribute("data-both_zero")} of 100000 trials loaded both zero (whatever this device allows)`);
+  await lab.locator('select[name="ordering"]').selectOption("seq_cst");
+  lab = await settled(0, "ordering=seq_cst");
+  check(num(await lab.getAttribute("data-both_zero")) === 0, "ch10 seq_cst: never both zero");
+  await lab.locator('.lab-modes button[data-mode="trace"]').click();
+  await lab.locator('.stepper select[name="schedule"]').selectOption("alternate");
+  await lab.locator(".stepper button", { hasText: "Run to the end" }).click();
+  check((await lab.locator(".stepper").getAttribute("data-trace-outcome")).includes("interleaving explains"), "ch10 trace: under seq_cst an interleaving explains the outcome");
+  // ch11: the fence forbids both zero.
+  await page.goto(base + "fences.html");
+  lab = await settled(0);
+  check(await lab.getAttribute("data-ordering") === "fence" && num(await lab.getAttribute("data-both_zero")) === 0, "ch11 fence: never both zero");
+  // ch12 and ch13: every layout counts exactly, and the comparison runs three layouts.
+  await page.goto(base + "cache-coherence.html");
+  lab = await settled(0);
+  check(num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")) && (await lab.getAttribute("data-layouts")).split(",").length === 3,
+    `ch12 compare: three layouts, every count exact (same word took ${await lab.getAttribute("data-ratio")} times as long as a line each here)`);
+  await page.goto(base + "false-sharing.html");
+  lab = await settled(1);
+  check(await lab.getAttribute("data-layout") === "own line" && num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")), "ch13 own line: exact");
+  check(errors.length === 0, `no page errors on ch08 to ch15${errors.length ? ": " + errors.join(" | ") : ""}`);
+  await context.close();
+  server.close();
+}
+
 // 2. Isolated by the service worker, as on GitHub Pages.
 {
   const { server, base } = await serve(false);

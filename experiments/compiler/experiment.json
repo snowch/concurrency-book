@@ -1,0 +1,32 @@
+{
+  "name": "compiler",
+  "title": "A loop that waits for a flag",
+  "kernel": "compiler.c",
+  "summary": "One worker waits in a loop for a flag that another worker sets after some busy work. The flag is plain, volatile or atomic, and the loop the compiler emitted decides whether the waiter ever sees it.",
+  "requires": { "threads": true },
+  "timeout_ms": 4000,
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 2, "max": 2, "default": 2 },
+    { "name": "delay", "label": "Setter's busy steps before setting the flag", "kind": "select",
+      "options": [0, 1000, 1000000, 100000000], "default": 1000000 },
+    { "name": "flag", "label": "The flag", "kind": "select",
+      "options": ["plain", "volatile", "atomic"], "default": "plain",
+      "hint": "plain: int. volatile: volatile int. atomic: _Atomic int, read with memory_order_relaxed." }
+  ],
+  "args": ["delay", "flag"],
+  "results": [
+    { "name": "outcome", "label": "Outcome", "what": "whether the waiter's loop ended, and on what value" },
+    { "name": "seen", "label": "Value the loop ended on", "what": "what the waiter read when its loop stopped; 0 means it stopped without seeing the flag" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing, or the timeout" }
+  ],
+  "trace": { "program": "compiler", "what": "a model of the loop the compiler emitted: a load every time round, or one load before the loop" },
+  "lowerings": [
+    { "name": "plain", "functions": ["wait_plain"], "opt": "O2" },
+    { "name": "plain-unoptimised", "functions": ["wait_plain"], "opt": "O0" },
+    { "name": "volatile", "functions": ["wait_volatile"], "opt": "O2" },
+    { "name": "atomic", "functions": ["wait_atomic"], "opt": "O2" }
+  ],
+  "native": { "args": "DELAY FLAG", "example": "2 1000000 0",
+    "results": ["value the waiter's loop ended on", "whether it ended", "the setter's busy steps"] }
+}

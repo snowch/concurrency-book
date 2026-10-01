@@ -1,0 +1,28 @@
+{
+  "name": "publication",
+  "title": "Publishing a value through a flag",
+  "kernel": "publication.c",
+  "summary": "A writer stores a value and then raises a flag; a reader waits for the flag and reads the value, many times over. The page counts the trials where the flag arrived before the value, under each ordering.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 2, "max": 2, "default": 2 },
+    { "name": "trials", "label": "Trials", "kind": "select", "options": [1000, 10000, 100000, 1000000], "default": 100000 },
+    { "name": "ordering", "label": "Ordering", "kind": "select",
+      "options": ["volatile", "relaxed", "release-acquire", "seq_cst"], "default": "volatile",
+      "hint": "volatile: a volatile flag, no ordering asked for. relaxed: an atomic flag with memory_order_relaxed. release-acquire: the store is a release, the load an acquire. seq_cst: both sequentially consistent." }
+  ],
+  "args": ["trials", "ordering"],
+  "results": [
+    { "name": "trials", "label": "Trials", "what": "trials completed" },
+    { "name": "stale", "label": "Stale reads", "what": "trials where the reader saw the flag raised but read the previous trial's value" },
+    { "name": "elapsed", "label": "Elapsed", "what": "all trials, from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "publication", "what": "a model where the writer's two stores may become visible in either order unless the flag's store is a release" },
+  "lowerings": [
+    { "name": "publish", "functions": ["publish_volatile", "publish_relaxed", "publish_release", "publish_seq_cst"], "opt": "O2" },
+    { "name": "receive", "functions": ["receive_volatile", "receive_relaxed", "receive_acquire", "receive_seq_cst"], "opt": "O2" }
+  ],
+  "native": { "args": "TRIALS ORDERING", "example": "2 100000 0",
+    "results": ["trials completed", "stale reads"] }
+}

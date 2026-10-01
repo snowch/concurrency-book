@@ -24,7 +24,9 @@
 
 #ifdef __wasm__
 #define CM_EXPORT(name) __attribute__((export_name(name)))
-/* Sleep until the word changes from `expected`, with no timeout: a Wasm `memory.atomic.wait32`. */
+/* Sleep until the word is no longer `expected`, with no timeout: a Wasm `memory.atomic.wait32`.
+   The kernel checks the word first; the instruction checks it again before sleeping, so a notify
+   that lands between the two is not missed. */
 static inline void cm_wait(_Atomic int32_t *word, int32_t expected) {
   __builtin_wasm_memory_atomic_wait32((int32_t *)word, expected, -1);
 }
@@ -32,13 +34,35 @@ static inline void cm_wait(_Atomic int32_t *word, int32_t expected) {
 static inline void cm_notify(_Atomic int32_t *word) {
   __builtin_wasm_memory_atomic_notify((int32_t *)word, 0x7fffffff);
 }
+/* Wake one thread sleeping on the word. */
+static inline void cm_notify_one(_Atomic int32_t *word) {
+  __builtin_wasm_memory_atomic_notify((int32_t *)word, 1);
+}
+#elif defined(CM_NATIVE_FUTEX) && defined(__linux__)
+/* The harness, on Linux: the same two operations are the futex system call, which the C
+   library's mutex is built on. The lowering never sees this branch: it compiles freestanding. */
+#include <linux/futex.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#define CM_EXPORT(name)
+static inline void cm_wait(_Atomic int32_t *word, int32_t expected) {
+  syscall(SYS_futex, word, FUTEX_WAIT_PRIVATE, expected, 0, 0, 0);
+}
+static inline void cm_notify(_Atomic int32_t *word) {
+  syscall(SYS_futex, word, FUTEX_WAKE_PRIVATE, 0x7fffffff, 0, 0, 0);
+}
+static inline void cm_notify_one(_Atomic int32_t *word) {
+  syscall(SYS_futex, word, FUTEX_WAKE_PRIVATE, 1, 0, 0, 0);
+}
 #else
 #define CM_EXPORT(name)
-/* Natively the harness has pthreads; here a waiter spins, which is enough for a start barrier. */
+/* Freestanding, or a desk without futexes: a waiter spins, which keeps the kernel correct and
+   makes a sleeping lock behave as a spinning one. */
 static inline void cm_wait(_Atomic int32_t *word, int32_t expected) {
   while (atomic_load_explicit(word, memory_order_acquire) == expected) {}
 }
 static inline void cm_notify(_Atomic int32_t *word) { (void)word; }
+static inline void cm_notify_one(_Atomic int32_t *word) { (void)word; }
 #endif
 
 /* Keep a function out of line, so a loop that calls it in the kernel keeps calling it and the

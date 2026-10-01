@@ -1,0 +1,33 @@
+{
+  "name": "cas",
+  "title": "Compare-and-swap",
+  "kernel": "cas.c",
+  "summary": "Every worker increments one counter by compare-and-swap, counting each retry, or increments a plain counter under a lock built from the same instruction.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 1, "max": 16, "default": 4 },
+    { "name": "iterations", "label": "Increments per worker", "kind": "select",
+      "options": [1000, 10000, 100000, 1000000], "default": 100000 },
+    { "name": "operation", "label": "Operation", "kind": "select",
+      "options": ["cas", "lock"], "default": "cas",
+      "hint": "cas: a compare-and-swap loop on the counter. lock: a plain increment inside a lock built from compare-and-swap." }
+  ],
+  "args": ["iterations", "operation"],
+  "results": [
+    { "name": "expected", "label": "Expected", "what": "workers times increments per worker" },
+    { "name": "observed", "label": "Observed", "what": "the counter after the last worker finished" },
+    { "name": "retries", "label": "Retries", "what": "compare-and-swaps that failed and went round again, all workers" },
+    { "name": "most", "label": "Most by one worker", "what": "the retries of the worker that retried most" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "cas", "what": "a model of each worker's load, add and compare-and-swap, with the retry when the compare fails" },
+  "lowerings": [
+    { "name": "increment", "functions": ["increment_with_cas"], "opt": "O2",
+      "targets": ["wasm", "x86-64", "aarch64", "aarch64-lse", "riscv64"] },
+    { "name": "acquire", "functions": ["lock_acquire"], "opt": "O2" },
+    { "name": "release", "functions": ["lock_release"], "opt": "O2" }
+  ],
+  "native": { "args": "ITERATIONS OPERATION", "example": "4 100000 0",
+    "results": ["counter", "retries in total", "counter under the lock", "most retries by one worker"] }
+}

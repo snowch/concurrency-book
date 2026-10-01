@@ -90,6 +90,11 @@
 .trace-table tr.t3 td:nth-child(2) { color: var(--tok-number); font-weight: 600; }
 .trace-table tr.current td { background: var(--wash); }
 .trace-table tr.empty td { color: var(--faint); white-space: normal; }
+.trace-table td.buf { font: 11.5px var(--mono); color: var(--warn); }
+.lab-timeout { margin: 0; padding: .6rem .8rem; color: var(--ink); background: var(--panel); border-left: 3px solid var(--warn); border-radius: 4px; }
+.worker-bars { margin-top: .7rem; }
+.worker-bars .control-label { margin: 0 0 .3rem; }
+.live-extra:empty { display: none; }
 
 /* Native mode: commands to copy. */
 .lab-panel-native pre { margin: 0; font-size: 12.5px; }

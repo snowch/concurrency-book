@@ -5,14 +5,14 @@
 | 2 | B | `r = load counter` | 0 | 0 |
 | 3 | A | `r = r + 1` | 1 | 0 |
 | 4 | B | `r = r + 1` | 1 | 0 |
-| 5 | A | `store counter = r` | 1 | 1 |
-| 6 | B | `store counter = r` | 1 | 1 |
+| 5 | A | `store counter = 1` | 1 | 1 |
+| 6 | B | `store counter = 1` | 1 | 1 |
 | 7 | A | `r = load counter` | 1 | 1 |
 | 8 | B | `r = load counter` | 1 | 1 |
 | 9 | A | `r = r + 1` | 2 | 1 |
 | 10 | B | `r = r + 1` | 2 | 1 |
-| 11 | A | `store counter = r` | 2 | 2 |
-| 12 | B | `store counter = r` | 2 | 2 |
+| 11 | A | `store counter = 2` | 2 | 2 |
+| 12 | B | `store counter = 2` | 2 | 2 |
 
 Expected `counter` = 4; final `counter` = 2; lost 2.
 

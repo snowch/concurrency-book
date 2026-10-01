@@ -17,6 +17,8 @@
 #ifndef KERNEL
 #error "compile with -DKERNEL='\"path/to/kernel.c\"'"
 #endif
+/* On Linux the kernels' wait and notify become futex calls, as a C library's mutex does. */
+#define CM_NATIVE_FUTEX 1
 #include KERNEL
 
 #define MAX_WORKERS 256

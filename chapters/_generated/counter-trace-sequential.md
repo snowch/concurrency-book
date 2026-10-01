@@ -3,16 +3,16 @@
 | --- | --- | --- | --- | --- |
 | 1 | A | `r = load counter` | 0 | 0 |
 | 2 | A | `r = r + 1` | 1 | 0 |
-| 3 | A | `store counter = r` | 1 | 1 |
+| 3 | A | `store counter = 1` | 1 | 1 |
 | 4 | A | `r = load counter` | 1 | 1 |
 | 5 | A | `r = r + 1` | 2 | 1 |
-| 6 | A | `store counter = r` | 2 | 2 |
+| 6 | A | `store counter = 2` | 2 | 2 |
 | 7 | B | `r = load counter` | 2 | 2 |
 | 8 | B | `r = r + 1` | 3 | 2 |
-| 9 | B | `store counter = r` | 3 | 3 |
+| 9 | B | `store counter = 3` | 3 | 3 |
 | 10 | B | `r = load counter` | 3 | 3 |
 | 11 | B | `r = r + 1` | 4 | 3 |
-| 12 | B | `store counter = r` | 4 | 4 |
+| 12 | B | `store counter = 4` | 4 | 4 |
 
 Expected `counter` = 4; final `counter` = 4; lost 0.
 

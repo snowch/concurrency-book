@@ -5,8 +5,8 @@
 | 2 | B | `r = load counter` | 0 | 0 |
 | 3 | A | `r = r + 1000` | 1000 | 0 |
 | 4 | B | `r = r + 1000` | 1000 | 0 |
-| 5 | A | `store counter = r` | 1000 | 1000 |
-| 6 | B | `store counter = r` | 1000 | 1000 |
+| 5 | A | `store counter = 1000` | 1000 | 1000 |
+| 6 | B | `store counter = 1000` | 1000 | 1000 |
 
 Expected `counter` = 2000; final `counter` = 1000; lost 1000.
 

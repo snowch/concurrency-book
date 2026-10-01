@@ -1,0 +1,26 @@
+{
+  "name": "sharing",
+  "title": "Counters on a cache line",
+  "kernel": "sharing.c",
+  "summary": "Every worker increments a counter of its own, placed in the same word as the others', beside them in one cache line, or on a line of its own. The counts agree; the page compares the times side by side.",
+  "requires": { "threads": true },
+  "modes": ["live", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 1, "max": 16, "default": 4 },
+    { "name": "iterations", "label": "Increments per worker", "kind": "select", "options": [100000, 1000000, 10000000], "default": 1000000 },
+    { "name": "layout", "label": "Layout", "kind": "select",
+      "options": ["compare", "same word", "same line", "own line", "two lines apart"], "default": "compare",
+      "hint": "compare runs the first three in turn; the others run one. Two lines apart is for processors that fetch lines in pairs." }
+  ],
+  "args": ["iterations", "layout"],
+  "results": [
+    { "name": "expected", "label": "Expected", "what": "workers times increments per worker" },
+    { "name": "observed", "label": "Observed", "what": "every counter added up" },
+    { "name": "elapsed", "label": "Elapsed", "what": "per layout, from the start barrier opening to the last worker finishing" }
+  ],
+  "lowerings": [
+    { "name": "bump", "functions": ["bump"], "opt": "O2" }
+  ],
+  "native": { "args": "ITERATIONS LAYOUT", "example": "4 1000000 1",
+    "results": ["every counter added up"] }
+}

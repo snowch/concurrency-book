@@ -1,0 +1,35 @@
+{
+  "name": "spinlock",
+  "title": "A spinlock",
+  "kernel": "spinlock.c",
+  "summary": "Every worker takes one lock, increments the counter inside it, does some busy work, and releases it; the page counts the increments and the spins each worker made waiting.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 1, "max": 16, "default": 4 },
+    { "name": "iterations", "label": "Critical sections per worker", "kind": "select",
+      "options": [1000, 10000, 100000], "default": 10000 },
+    { "name": "work", "label": "Busy steps inside the lock", "kind": "select",
+      "options": [0, 10, 100, 1000], "default": 10 },
+    { "name": "operation", "label": "Acquire", "kind": "select",
+      "options": ["tas", "ttas", "broken"], "default": "tas",
+      "hint": "tas: test-and-set, an atomic exchange. ttas: spin on a load, then exchange. broken: a load, then a store." }
+  ],
+  "args": ["iterations", "operation", "work"],
+  "results": [
+    { "name": "expected", "label": "Expected", "what": "workers times critical sections per worker" },
+    { "name": "observed", "label": "Observed", "what": "the counter after the last worker finished" },
+    { "name": "spins", "label": "Spins", "what": "iterations every worker spent waiting for the lock, added up" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "spinlock", "what": "a model of each worker's exchange, critical section and release, where a spinning worker takes steps that do nothing" },
+  "lowerings": [
+    { "name": "acquire", "functions": ["spin_acquire"], "opt": "O2",
+      "targets": ["wasm", "x86-64", "aarch64", "aarch64-lse", "riscv64"] },
+    { "name": "ttas", "functions": ["spin_acquire_ttas"], "opt": "O2" },
+    { "name": "broken", "functions": ["broken_acquire"], "opt": "O2" },
+    { "name": "release", "functions": ["spin_release"], "opt": "O2" }
+  ],
+  "native": { "args": "ITERATIONS ACQUIRE WORK", "example": "4 10000 0 10",
+    "results": ["counter", "spins in total", "then each worker's spins"] }
+}

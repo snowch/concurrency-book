@@ -1,0 +1,29 @@
+{
+  "name": "store_buffer",
+  "title": "The store-buffer test",
+  "kernel": "store_buffer.c",
+  "summary": "Two workers each store a one into their own word and then load the other's, many times over. The page counts how often both loaded a zero, which no interleaving of the four operations allows, under each ordering.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 2, "max": 2, "default": 2 },
+    { "name": "trials", "label": "Trials", "kind": "select", "options": [1000, 10000, 100000, 1000000], "default": 100000 },
+    { "name": "ordering", "label": "Ordering", "kind": "select",
+      "options": ["volatile", "relaxed", "release-acquire", "seq_cst", "fence"], "default": "volatile",
+      "hint": "volatile: plain stores and loads. relaxed: atomics with no ordering. release-acquire: a release store, an acquire load. seq_cst: sequentially consistent atomics. fence: plain accesses with a full fence between them." }
+  ],
+  "args": ["trials", "ordering"],
+  "results": [
+    { "name": "trials", "label": "Trials", "what": "trials completed" },
+    { "name": "both_zero", "label": "Both loaded zero", "what": "trials where neither worker saw the other's store: the outcome no interleaving allows" },
+    { "name": "other", "label": "Other outcomes", "what": "trials where at least one worker saw the other's store" },
+    { "name": "elapsed", "label": "Elapsed", "what": "all trials, from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "store_buffer", "what": "a model with a store buffer per thread: a store waits in the buffer until it drains, and a fence drains it" },
+  "lowerings": [
+    { "name": "a", "functions": ["sb_volatile_a", "sb_relaxed_a", "sb_release_acquire_a", "sb_seq_cst_a"], "opt": "O2" },
+    { "name": "fence", "functions": ["sb_fence_a"], "opt": "O2" }
+  ],
+  "native": { "args": "TRIALS ORDERING", "example": "2 100000 0",
+    "results": ["trials", "both zero", "(0, 1)", "(1, 0)", "(1, 1)"] }
+}

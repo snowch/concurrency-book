@@ -1,0 +1,34 @@
+{
+  "name": "mutex",
+  "title": "A lock that sleeps",
+  "kernel": "mutex.c",
+  "summary": "Every worker takes one lock around a critical section: a spinlock, a lock whose waiters sleep on the lock word, or one that spins a little before sleeping. The page counts spins, sleeps and time.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 1, "max": 16, "default": 8 },
+    { "name": "iterations", "label": "Critical sections per worker", "kind": "select",
+      "options": [100, 1000, 10000], "default": 1000 },
+    { "name": "work", "label": "Busy steps inside the lock", "kind": "select",
+      "options": [10, 100, 1000, 10000], "default": 1000 },
+    { "name": "operation", "label": "Lock", "kind": "select",
+      "options": ["spin", "sleep", "spin-then-sleep"], "default": "spin",
+      "hint": "spin: the spinlock. sleep: waiters sleep on the lock word until a release wakes one. spin-then-sleep: a hundred tries, then sleep." }
+  ],
+  "args": ["iterations", "operation", "work"],
+  "results": [
+    { "name": "expected", "label": "Expected", "what": "workers times critical sections per worker" },
+    { "name": "observed", "label": "Observed", "what": "the counter after the last worker finished" },
+    { "name": "spins", "label": "Spins", "what": "iterations spent spinning, all workers" },
+    { "name": "sleeps", "label": "Sleeps", "what": "times a worker went to sleep on the lock word, all workers" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "mutex", "what": "a model where a spinning worker takes steps that do nothing and a sleeping worker takes none until woken" },
+  "lowerings": [
+    { "name": "lock", "functions": ["mutex_lock"], "opt": "O2", "targets": ["wasm"] },
+    { "name": "unlock", "functions": ["mutex_unlock"], "opt": "O2", "targets": ["wasm"] },
+    { "name": "spin", "functions": ["spin_lock"], "opt": "O2" }
+  ],
+  "native": { "args": "ITERATIONS LOCK WORK", "example": "8 1000 1 1000",
+    "results": ["counter", "spins in total", "sleeps in total"] }
+}
