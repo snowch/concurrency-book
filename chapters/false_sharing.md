@@ -10,7 +10,7 @@ title: False sharing
 Why do two threads that never touch the same variable slow each other down?
 
 [ch12](#cache-coherence) ended on a result that looked wrong: four workers with four counters of
-their own, side by side in memory, ran as slowly as four workers on one counter. They shared
+their own, side by side in memory, ran about as slowly as four workers on one counter, on the device you ran it on. They shared
 nothing in the program. They shared a cache line, and the protocol of ch12 does not know the
 difference. This chapter is about the most common performance bug in multithreaded code that
 is correct, and about the fix, which is empty space.
@@ -37,13 +37,13 @@ layout: compare
 Try these, in order:
 
 1. **Run it and compare *same line* with *own line*.** The counts are the same, and the workers
-   touched four different words in both. The *same line* run costs about what *same word* costs:
+   touched four different words in both. On this run the *same line* time is close to *same word*'s:
    the line bounced between the cores on every increment, as it did when the word was shared,
    because the protocol moves lines, not words.
 2. **Try two workers.** The effect is there with two. It is not a crowding effect; it is the line.
 3. **Pick *two lines apart*.** On most devices the same as *own line*. On some, including
-   recent Apple processors and some Intel ones, it is faster still, because the cache fetches or
-   tracks lines in pairs and sixty-four bytes apart is not far enough.
+   recent Apple processors and some Intel ones, it is faster still, because the line is a hundred and twenty-eight bytes on Apple's cores, and some Intel
+   cores fetch neighbouring lines in pairs, so sixty-four bytes apart is not far enough.
 4. **Think about where this appears in a program you have written.** An array of per-thread
    counters. A struct with a mutex and the data it protects, where one thread holds the mutex
    and another spins on it. A ring buffer whose head and tail indices are adjacent. The pattern
@@ -110,8 +110,8 @@ lock: layout
 
 Padding is the fix when the hot variables are known. When they are not, the usual tools are a
 profiler that attributes cache misses to lines, and a rule of thumb: anything one thread writes
-often should share a line with nothing another thread touches often. A read-only variable can
-share a line with anything; a line that is only read is shared by every cache at once at no cost.
+often should share a line with nothing another thread touches often. A read-only variable can share
+a line with other read-only variables; a line nobody writes sits in every cache at once at no cost.
 
 ## Break it again
 
@@ -153,7 +153,7 @@ kilobytes for four. The trade is always memory for traffic.
 - **The measurement.** Ulrich Drepper, *What Every Programmer Should Know About Memory*, 2007,
   section 6.4.2 on false sharing, with the experiment this chapter's kernel repeats.
 - **The language's tool.** ISO C, section 6.7.5, alignment specifiers, `_Alignas`; and C++'s
-  `std::hardware_destructive_interference_size`, the standard's name for the line size.
+  `std::hardware_destructive_interference_size`, the implementation's minimum distance that avoids false sharing, which need not equal the line size.
 - **The profiler.** Linux `perf c2c`, which finds false sharing by attributing cache-to-cache
   transfers to lines and to the code that caused them.
 - **Next.** [ch14](#store-buffers-and-visibility) returns to the store buffer, which is where a

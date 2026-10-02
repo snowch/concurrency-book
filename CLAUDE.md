@@ -88,8 +88,7 @@ out the functions the contract names and writing each as a fragment with a condi
 
 **Every kernel has the same four exports** (`experiments/cm.h`): `cm_reset`, `cm_run(tid, a, b, c)`,
 `cm_result(i)` and `cm_go`. `web/lab/runtime.js` makes one shared `WebAssembly.Memory` per run,
-instantiates the module once on the page (which lays out the data) and once per worker, waits for
-every worker to be inside `cm_run` and asleep on the kernel's barrier, calls `cm_go`, and reads the
+instantiates the module once on the page (which lays out the data) and once per worker, waits for every worker to say it is about to call `cm_run`, whose first act is to sleep on the kernel's barrier, calls `cm_go`, and reads the
 results when the last worker reports. The timing is wall time from `cm_go` to the last report.
 
 **Experiments are fenced blocks.** A page embeds one with:

@@ -12,8 +12,7 @@ What does an atomic read-modify-write fix, and which concurrency problems does i
 [ch02](#two-threads-one-variable) lost increments in the window between a load and a store, and
 closed the window by switching the kernel to an atomic increment. This chapter reads what that
 switch changed. The answer is one instruction on three of the four targets and a short loop on
-the fourth, and in every case the processor promises that no other core's access lands between
-the read and the write. The second half of the question matters as much as the first. An atomic
+the fourth, and in every case the instruction set promises that the write lands only if no other core's write landed since the read. The second half of the question matters as much as the first. An atomic
 operation is indivisible; two of them are not, and most concurrency problems involve two.
 
 ## The smallest program
@@ -55,8 +54,9 @@ Try these, in order:
    operation, which loses.
 2. **Compare the time.** Switch between *plain* and *atomic* with the same count and watch
    *Elapsed*. The atomic version is slower, and on a device with several cores it can be much
-   slower, because every increment must now take the counter's cache line away from the other
-   cores before it can change it. [ch12](#cache-coherence) measures that, and
+   slower, because a plain increment can hand its store to the core and move on, while an atomic one
+   must own the line and finish both the read and the write before anything after it, so the
+   cores take turns. That is the microarchitecture: [ch12](#cache-coherence) measures it, and
    [ch21](#contention-and-scalability) draws it against the number of workers.
 3. **Open the deterministic trace.** With *atomic* selected, press *Run to the end* under any
    schedule. Each increment is one step in the model, so there is no window for another thread's
@@ -73,11 +73,12 @@ single operation:
 ```{include} _generated/counter-trace-atomic.md
 ```
 
-How the processor keeps the step indivisible differs by architecture, and the fragments below
-show two ways. One is to hold the cache line exclusively for the duration of the instruction, so
-that no other core can read or write it until the write is done. The other is to attempt the
-write and have it fail if anything touched the line since the read, then retry. Both arrive at
-the same guarantee: either the increment has not happened or it has, never half.
+The instruction set promises the same thing on every target: no other core's write lands between
+the read and the write that counts. The fragments below show two shapes for that promise, one
+instruction that reads and writes as one access, or a load that marks the word and a store that
+fails and retries if another write landed since; how a core keeps the promise is the
+microarchitecture's and is not shown. Both arrive at the same guarantee: either the increment has
+not happened or it has, never half.
 
 Atomicity is a property of one operation. The variable's declaration makes every operation on it
 atomic; it does not make a sequence of them atomic, and nothing can, short of a lock or a loop
@@ -114,8 +115,7 @@ that notices. That is the limit the rest of the chapter is about.
 ::::
 
 **x86-64** adds one byte to the instruction from [ch01](#what-x-plus-plus-does): the `lock`
-prefix. The `inc` is the same read, add, write; the prefix makes the processor keep the cache
-line to itself from the read to the write, so no other core's access can land between them. On
+prefix. The `inc` is the same read, add, write; the prefix makes the read and the write one atomic access: the instruction set promises that no other core's access to the word lands between them. How a core keeps that promise, on most modern parts by holding the cache line for the instruction, is the microarchitecture's business. On
 x86-64 the prefix also orders every earlier and later memory access of this thread around it,
 which [ch15](#x86-is-not-the-model) returns to; the C asked for *relaxed* and got more than it
 asked for.
@@ -138,7 +138,7 @@ as one instruction. The destination register is `zero`, so the old value is disc
 discarded it.
 
 **WebAssembly** has `i32.atomic.rmw.add`: read-modify-write add, one instruction, whose result is
-dropped. The engine in your browser lowers it to whichever of the above the host has. The
+dropped. The engine in your browser lowers it to an atomic add of the host's own, which may or may not be one of the above. The
 WebAssembly instruction promises atomicity; it does not say which host instruction delivers it,
 and the book never claims to know.
 
@@ -146,11 +146,12 @@ and the book never claims to know.
 
 The fix was ch02's: replace the three steps by one atomic read-modify-write. What is worth seeing
 here is the cost of the fix, in the panel above: *atomic* against *plain* at the same count, on
-your own device. The atomic increment is slower not because the instruction is slow in itself,
-but because its promise is expensive to keep when another core wants the same line at the same
-moment. One worker alone pays little. Several pay for each other. The price of an atomic
-operation is contention, and a design that puts every thread's increment on one word pays it in
-full; [ch13](#false-sharing) and [ch21](#contention-and-scalability) are about paying less.
+your own device. The atomic increment is slower partly because the instruction costs more alone, on
+x86-64 because the prefix is also a barrier, and mostly because its promise is expensive to keep
+when another core wants the same line at the same moment. One worker alone pays little. Several pay
+for each other. The price of an atomic operation is contention, and a design that puts every
+thread's increment on one word pays it in full; [ch13](#false-sharing) and
+[ch21](#contention-and-scalability) are about paying less.
 
 ## Break it again
 
@@ -203,16 +204,18 @@ The instructions tell the same story:
 :::
 ::::
 
-On AArch64 and RISC-V a relaxed atomic load and a relaxed atomic store are the same instructions
-as a plain load and a plain store: `ldr` and `str`, `lw` and `sw`. An aligned word is read and
-written whole by those instructions already, so the atomicity of each access costs nothing and
-the compiler emits nothing extra. On x86-64 the two `mov` instructions are likewise the plain
-ones. What the `_Atomic` declaration bought here is a promise about each access on its own, and a
-promise to the compiler that other threads exist, so it may not fold or reorder them as it did
-in ch01. It did not buy a promise about the pair. WebAssembly is the exception that proves it:
-`i32.atomic.load` and `i32.atomic.store` are distinct instructions from the plain ones, because
-WebAssembly makes every atomic access sequentially consistent, which [ch10](#sequential-consistency)
-explains, and it still loses the update, because the window is between the two.
+On AArch64 and RISC-V a relaxed atomic load and a relaxed atomic store are the same instructions as
+a plain load and a plain store: `ldr` and `str`, `lw` and `sw`. An aligned word is read and written
+whole by those instructions already, so the atomicity of each access costs nothing and the compiler
+emits nothing extra. On x86-64 the compiler went further and merged the atomic load and the atomic
+store into ch01's `inc` without a `lock` prefix: each access is still atomic on its own, and the
+pair is still two accesses with the window between. What the `_Atomic` declaration bought here is a
+promise about each access on its own, and a promise to the compiler that other threads exist, so it
+may not fold or reorder them as it did in ch01. It did not buy a promise about the pair.
+WebAssembly is the exception that proves it: `i32.atomic.load` and `i32.atomic.store` are distinct
+instructions from the plain ones, because WebAssembly makes every atomic access sequentially
+consistent, which [ch10](#sequential-consistency) explains, and it still loses the update, because
+the window is between the two.
 
 This is the shape of most concurrency bugs that survive a code review. Each operation was
 atomic. The invariant needed two of them to be. The tool for that, an operation that changes a
@@ -223,10 +226,7 @@ value only if it is still what you last saw, is [ch04](#compare-and-swap).
 :::{div}
 :class: model
 
-**An atomic read-modify-write is one step with no window.** The processor either keeps the line
-to itself from read to write (x86-64's `lock`, RISC-V's `amoadd`, AArch64's `ldadd`) or notices
-that something changed and retries (AArch64's `ldxr` and `stxr`). Either way, other cores see
-the operation whole or not at all.
+**An atomic read-modify-write is one step with no window.** The instruction set promises that no other core's write lands between the read and the write that counts, in one instruction (x86-64's `lock inc`, RISC-V's `amoadd`, AArch64's `ldadd`) or in a marked load and a store that fails and retries (AArch64's `ldxr` and `stxr`). Either way, other cores see the operation whole or not at all.
 
 **Atomicity belongs to an operation, not a variable.** Declaring a variable atomic makes each
 access indivisible. Two accesses have a window between them like any other two.

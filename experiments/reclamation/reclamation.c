@@ -54,7 +54,7 @@ CM_NOINLINE int read_with_hazard(int r) {
    hazards, retiring waits until no reader announces the old record. */
 CM_NOINLINE void update(int next, int use_hazards, int readers) {
   atomic_store_explicit(&values[next], 1000 + next, memory_order_relaxed);
-  int old = atomic_exchange_explicit(&current, next, memory_order_acq_rel);
+  int old = atomic_exchange_explicit(&current, next, memory_order_seq_cst);
   if (use_hazards) {
     for (int r = 1; r <= readers; r++) {
       while (atomic_load_explicit(&hazard[r], memory_order_seq_cst) == old) {

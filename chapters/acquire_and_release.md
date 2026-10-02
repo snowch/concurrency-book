@@ -11,8 +11,7 @@ How does one thread hand a finished piece of data to another, safely?
 
 [ch07](#the-compiler-is-part-of-the-story) fixed a flag, and warned that a flag is rarely alone.
 The reason to raise a flag is to say that something else is ready: a buffer filled, a record
-written, a result computed. The flag is one word; the something else is other words. Part I
-made the flag itself reliable. Nothing so far has said that the data arrives when the flag does,
+written, a result computed. The flag is one word; the something else is other words. Part I made the flag itself reliable. Atomicity is a promise about one word. The handover needs a promise about two, and no operation on one word can make it alone. Nothing so far has said that the data arrives when the flag does,
 and on most processors, and in some compilers, it need not. This chapter runs the simplest
 version of the handover, a writer and a reader with one word of data and one flag, many thousand
 times, and counts the times the flag arrived first.
@@ -67,8 +66,7 @@ ordering: volatile
 Try these, in order:
 
 1. **Run it.** Watch *Stale reads*. On the WebAssembly build this book runs, the compiler itself
-   placed the flag's store before the data's, so stale reads appear on any device with more than
-   one core, often by the thousand. *At the machine* shows the two stores in that order.
+   placed the flag's store before the data's, so a stale read is possible on any device with more than one core, and this run's count is one observation of how often this device hit the window. *At the machine* shows the two stores in that order.
 2. **Switch the ordering to *release-acquire*.** No stale reads, however many trials and however
    many times you run it. The store of the flag is a release, the load of the flag an acquire,
    and together they promise that everything the writer did before the release is visible to the
@@ -101,14 +99,14 @@ The same handover with a release store, which lets nothing stored before it over
 ```{include} _generated/publication-trace-release.md
 ```
 
-`memory_order_release` on a store means: every memory access this thread made before this store
-is visible to any thread that sees this store, before it sees this store. `memory_order_acquire`
-on a load means: every memory access this thread makes after this load happens after it, as far
-as any other thread can tell. A release store read by an acquire load is the language's unit of
-handover. The standard calls the relationship *synchronizes-with*, and the chain it creates,
-from the writer's data store to the reader's data load, *happens-before*. The reader's load of
-the data happens after the writer's store of it, so it sees the stored value. That is the whole
-guarantee, and it is enough for every handover in this book.
+`memory_order_release` on a store means: every memory access this thread made before this store is
+visible to any thread whose acquire load reads this store, after that load. `memory_order_acquire`
+on a load means: every memory access this thread makes after this load happens after it, as far as
+any other thread can tell. A release store read by an acquire load is the language's unit of
+handover. The standard calls the relationship *synchronizes-with*, and the chain it creates, from
+the writer's data store to the reader's data load, *happens-before*. The reader's load of the data
+happens after the writer's store of it, so it sees the stored value. That is the whole guarantee,
+and it is enough for every handover in this book.
 
 ## At the machine
 
@@ -139,7 +137,7 @@ The writer's four versions, in one fragment per target. Find the release:
 
 **AArch64** shows the release as an instruction: `stlr`, store-release, where the volatile and
 relaxed versions use a plain `str`. **RISC-V** shows it as a `fence rw, w` before the store:
-every earlier read and write completes before this write. **x86-64** shows nothing: the release
+every earlier read and write is ordered before this write, as every other hart sees it. **x86-64** shows nothing: the release
 store is the same `mov` as the relaxed one, because x86-64 never reorders a store with an earlier
 store, so the ordering the C asked for is free. **WebAssembly** shows the volatile version with
 the flag's store first, as the compiler scheduled it, and every atomic version as the same
@@ -197,13 +195,13 @@ with one variable.
 ## Break it again
 
 Keep the flag atomic and take the ordering away: *relaxed*. The compiler now knows another thread
-reads the flag, and will not fold the loop; but it has been asked for no order, and neither has
-the processor. On AArch64 the relaxed fragments are the plain `str` and `ldr`, the same
-instructions as the volatile version, and a stale read is allowed and happens. In this browser,
-run it and you will see none, because the WebAssembly the kernel runs has only sequentially
-consistent atomics, so the relaxed version got the strong store and the strong load for free.
-That is the browser hiding a bug, not the bug's absence, and [ch09](#relaxed-atomics) is about
-what relaxed does and does not promise.
+reads the flag, and will not fold the loop; but it has been asked for no order, and neither has the
+processor. On AArch64 the relaxed fragments are the plain `str` and `ldr`, the same instructions as
+the volatile version, and a stale read is allowed by the architecture; the harness on an AArch64
+device shows it. In this browser, run it and you will see none, because the WebAssembly the kernel
+runs has only sequentially consistent atomics, so the relaxed version got the strong store and the
+strong load for free. That is the browser hiding a bug, not the bug's absence, and
+[ch09](#relaxed-atomics) is about what relaxed does and does not promise.
 
 ## The mental model
 
@@ -223,8 +221,7 @@ load; nothing at all on x86-64; the one strong store WebAssembly has.
 
 ## What this cannot tell you
 
-**How often a stale read happens natively.** On x86-64, never, for any of the four orderings:
-the hardware keeps stores in order and loads in order. On AArch64, often, for volatile and
+**How often a stale read happens natively.** On x86-64 with these fragments, never: the compiler kept the stores in order and the architecture keeps them in order. For volatile and relaxed another compile may not, as the WebAssembly fragment shows. On AArch64, often, for volatile and
 relaxed. The browser's count is for the WebAssembly build, whose stores the compiler reordered;
 it is a real stale read with a different cause.
 

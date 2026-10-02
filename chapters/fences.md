@@ -28,9 +28,11 @@ The volatile store and load from ch10, with a full fence between them:
 :end-before: /* Worker 1's half
 ```
 
-`atomic_thread_fence(memory_order_seq_cst)` orders every memory access before it against every
-memory access after it, in this thread, as seen by any other thread. It touches no variable. It
-is the only line in the kernel that compiles to an instruction with no operand.
+In C11 `atomic_thread_fence(memory_order_seq_cst)` orders this thread's accesses as other threads
+see them, but only through the atomic operations around it; this kernel's accesses are volatile, so
+the language promises nothing here. What the run shows is the fence instruction each target emits,
+which orders plain accesses too. It touches no variable. It is the only line in the kernel that
+compiles to an instruction naming no address.
 
 ## Run it
 
@@ -45,8 +47,7 @@ Try these, in order:
 
 1. **Run it.** *Both loaded zero* is zero. The volatile store and load are the same ones that
    produced the outcome in ch10; the fence between them is the whole difference.
-2. **Switch to *volatile*.** The outcome returns. Switch back. The fence is doing on the volatile
-   accesses what `seq_cst` did on the atomic ones.
+2. **Switch to *volatile*.** The outcome returns. Switch back. The fence instruction is doing on the volatile accesses what the exchange did on the atomic ones; the language's promise exists only for the atomic version.
 3. **Open the deterministic trace.** Under *fence*, the fence step drains the thread's store
    buffer before the load runs, under every schedule. Under *volatile*, nothing drains it until
    after the load.
@@ -101,8 +102,7 @@ would lose exactly the same updates.
 :::
 ::::
 
-**x86-64**: `mfence`, memory fence, which waits for the store buffer to drain before the next
-load issues. It is the one explicit full fence x86-64 has, and it is slower than a locked
+**x86-64**: `mfence`, memory fence: every load and store before it is performed before any after it. On the cores the book knows, that means the store buffer drains before the next load. It is the one explicit full fence x86-64 has, and it is slower than a locked
 instruction doing the same job, which is why ch10's compiler chose `xchg` for the sequentially
 consistent store and why some runtimes use a locked add to a stack slot as a fence.
 
@@ -137,20 +137,21 @@ ordering: fence
 ```
 
 Choose by what the program needs ordered. One access: put the ordering on the access. A group of
-accesses: a fence. On x86-64 prefer the ordering on the access, because the compiler will use a
-locked instruction instead of `mfence`. On AArch64 prefer the ordering on the access, because
-`stlr` and `ldar` are cheaper than `dmb`.
+accesses: a fence. On x86-64 prefer the ordering on the access, because the compiler then uses a
+locked instruction, which current cores run faster than `mfence`. On AArch64 prefer the ordering on
+the access, because `stlr` and `ldar` are usually cheaper than `dmb`; this page measures neither.
 
 ## Break it again
 
 Try to fix [ch02](#two-threads-one-variable) with a fence. Put a full fence after the load and
-another after the store in each thread's increment. The trace under *alternate* loses the same
-update it always did: thread A loads, thread B loads, both add, both store. The fences ordered
-each thread's load before its own store, which was never in doubt. They did nothing about the
-other thread, because a fence cannot. The fix for ch02 was an atomic read-modify-write, which
+another after the store in each thread's increment. No trace offers this variant; step ch02's trace
+under *alternate* and add the fence in your head: it drains a buffer that holds nothing, changes no
+step, and the same update is lost: thread A loads, thread B loads, both add, both store. The fences
+ordered each thread's load before its own store, which was never in doubt. They did nothing about
+the other thread, because a fence cannot. The fix for ch02 was an atomic read-modify-write, which
 excludes the other thread for the duration of the operation; the fix for ch10 was an ordering,
-which a fence can provide. Two problems, two tools, and a fence is the right one for exactly one
-of them.
+which a fence can provide. Two problems, two tools, and a fence is the right one for exactly one of
+them.
 
 ## The mental model
 

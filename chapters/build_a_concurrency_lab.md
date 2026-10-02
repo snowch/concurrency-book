@@ -27,8 +27,8 @@ barrier every kernel waits at:
 :end-before: #endif
 ```
 
-The kernel of [ch01](#what-x-plus-plus-does), which is the smallest in the book, is the whole of
-a kernel: a variable, a function or two, and the four exports:
+The kernel of [ch01](#what-x-plus-plus-does), which is among the smallest in the book, is the whole
+of a kernel: a variable, a function or two, and the four exports:
 
 ```{literalinclude} ../experiments/counter/counter.c
 :language: c
@@ -49,13 +49,13 @@ operation: atomic
 Try these, in order:
 
 1. **Run it and watch the foot of the panel.** *Starting workers*, then *running*, then *done*.
-   The first is the runtime creating a memory and four workers and waiting for each to say it is
-   inside the kernel; the second is the kernel; the third is the results being read out of the
+   The first is the runtime creating a memory and four workers and waiting for each to say it is about to call into the kernel; the second is the kernel; the third is the results being read out of the
    shared memory.
 2. **Compare *Elapsed* with the per-worker times in the note.** *Elapsed* is from the barrier
    opening to the last worker's report; each worker's own time is from its call into the kernel,
-   which includes its wait at the barrier. The difference is the runtime's overhead, which is
-   small against a run of a million increments and large against a run of a thousand.
+   which includes its wait at the barrier. An early worker's time can exceed *Elapsed* by the time the later
+   workers took to start; the difference is the runtime's own latency, small against a run of a
+   million increments and large against a run of a thousand.
 3. **Set the increments to a thousand and run several times.** The times jump about, because the
    run is now shorter than the wake-ups and the messages around it. That is why the book's
    experiments default to counts in the hundreds of thousands, and why
@@ -74,11 +74,9 @@ stack pointer. The last flag is the one that makes threads work at all, and the 
 says why. The build script in the repository, `tools/lower.py`, holds the exact flags, and
 [Appendix A](#reproducing-at-a-desk) prints them.
 
-**The stack.** A WebAssembly module keeps its C stack in linear memory, with a global that
-points at the top. Every instance of the module starts with the same value in that global. Two
+**The stack.** A WebAssembly module keeps the part of its C stack that needs an address, arrays and locals whose address is taken, in linear memory, with a global that points at the top. Every instance of the module starts with the same value in that global. Two
 workers instantiating the same module on the same memory would therefore share one stack and
-corrupt each other's locals, which is a bug that shows up as nothing in particular. The runtime
-exports the global and each worker sets it to a region of its own before calling anything:
+corrupt each other's locals, which is a bug that shows up as nothing in particular. The linker exports the global and each worker sets it to a region of its own before calling anything:
 
 ```{literalinclude} ../web/lab/worker.js
 :language: javascript
@@ -88,8 +86,7 @@ exports the global and each worker sets it to a region of its own before calling
 
 **The barrier.** Workers are created one after another and take different times to start; a run
 that began when each worker was ready would have the first worker finishing before the last had
-begun. So every kernel waits at the barrier in `cm_run`, each worker tells the page when it is
-inside the kernel and asleep, and the page opens the barrier once all have reported:
+begun. So every kernel waits at the barrier in `cm_run`, each worker tells the page as it is about to call into the kernel, where its first act is to sleep at the barrier, and the page opens the barrier once all have reported; a worker that arrives late finds the flag set and goes straight through:
 
 ```{literalinclude} ../web/lab/runtime.js
 :language: javascript
@@ -97,9 +94,9 @@ inside the kernel and asleep, and the page opens the barrier once all have repor
 :end-before: const results = [];
 ```
 
-The page's own thread never calls into the kernel, because a page's thread may not wait, and a
-kernel's first act is to wait. It instantiates the module once, which lays out the kernel's data,
-calls `cm_reset`, and reads the results when the workers are done.
+The page's own thread never calls `cm_run`, because a page's thread may not wait, and `cm_run`'s
+first act is to wait. It instantiates the module once, which lays out the kernel's data, calls
+`cm_reset`, and reads the results when the workers are done.
 
 ## At the machine
 
@@ -109,11 +106,11 @@ the call the chapters have been reading:
 ```{include} _generated/counter-run-wasm.md
 ```
 
-`i32.atomic.load` reads the barrier's flag; `memory.atomic.wait32` sleeps on it with the
-expected value zero and no timeout; the loop after it calls `increment_atomic` or `increment`
-as the arguments say. The runtime's `cm_go` is a release store of one and a notify, which
-[ch22](#webassembly-threads) showed. Every kernel in the book begins with this block, because
-every kernel includes the header.
+`i32.atomic.load` reads the barrier's flag; `memory.atomic.wait32` sleeps on it with the expected
+value zero and no timeout; the loop after it calls `increment_atomic` or `increment` as the
+arguments say. `cm_go`, which the runtime calls and the header above defines, is a release store of
+one and the notify [ch22](#webassembly-threads) showed. Every kernel in the book begins with this
+block, because every kernel includes the header.
 
 ## Fix one thing
 
@@ -137,10 +134,10 @@ lines, what an operating system provides:
 
 Set every worker's stack pointer to the same value, which is what happens with the line removed,
 and run a kernel whose functions keep locals on the stack. The counter kernel keeps none, so it
-would survive, which is why the symptom hides. The queue kernel of [ch19](#lock-free-queue)
-keeps an array of sixteen counters per consumer on its stack, and would report nonsense. A
-laboratory is itself a concurrent program, and the book's checks drive every kernel on real
-threads under Node and in a browser for exactly that reason.
+would survive, which is why the symptom hides. The queue kernel of [ch19](#lock-free-queue) keeps
+an array of sixteen last-seen values per consumer on its stack, and would report nonsense. A
+laboratory is itself a concurrent program, and the book's checks drive every kernel on real threads
+under Node and in a browser for exactly that reason.
 
 ## The mental model
 

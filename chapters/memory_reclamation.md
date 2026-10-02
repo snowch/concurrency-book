@@ -11,12 +11,12 @@ Why does removing a lock create a problem about when memory may be reused?
 
 With a lock, the answer is in the lock: a thread that holds it is the only one touching the
 structure, so it may free a node it unlinks, and nobody can be reading it. Without a lock, every
-other thread may be reading the structure at every moment, and a node unlinked by one thread may
-be in another thread's hands, between a read of the pointer and a read of what it points to.
-[ch17](#the-aba-problem) saw one consequence; this chapter sees the general one. A node freed
-and reused while a reader holds it is a use after free, which in C is undefined and in practice
-is a read of somebody else's data. The kernel makes it visible by poisoning every record it
-retires, and then shows the oldest answer to the problem: a reader announces what it is reading,
+other thread may be reading the structure at every moment, and a node unlinked by one thread may be
+in another thread's hands, between a read of the pointer and a read of what it points to.
+[ch17](#the-aba-problem) saw one consequence; this chapter sees the general one. A node freed and
+reused while a reader holds it is a use after free, which in C is undefined and in practice is a
+read of somebody else's data. The kernel makes it visible by poisoning every record it retires, and
+then shows one answer to the problem, the hazard pointer: a reader announces what it is reading,
 and the writer waits.
 
 ## The smallest program
@@ -51,7 +51,7 @@ protection: none
 
 Try these, in order:
 
-1. **Run it.** *Poisoned reads* is not zero. A reader followed the pointer to a record, the
+1. **Run it.** *Poisoned reads* is not zero, on a device with more than one core, and the count is one observation. A reader followed the pointer to a record, the
    writer published a new one and poisoned the old, and the reader's read of the record came
    after the poison. In a real program the poison is whatever the allocator put there next.
 2. **Add readers.** More readers, more poisoned reads: each is another thread that can be
@@ -150,11 +150,11 @@ protection: hazard pointers
 lock: protection
 ```
 
-The cost is on the writer, which waits, and on every read, which is now three loads and a store,
-the store sequentially consistent. A real implementation does not spin: it puts retired records
-on a list and reclaims those no hazard names, in batches, so that the writer rarely waits and
-the memory held back is bounded by the number of readers. The kernel spins to make the wait
-visible.
+The cost is on the writer, which waits, and on every read, which is now three loads and two stores,
+the first store sequentially consistent, the store sequentially consistent. A real implementation
+does not spin: it puts retired records on a list and reclaims those no hazard names, in batches, so
+that the writer never waits and the memory held back is bounded by the number of hazards and the
+batch size. The kernel spins to make the wait visible.
 
 The other family of fixes is to make readers announce not a record but a time: an epoch, which
 the next chapters' read-copy-update does, at a lower cost per read and a higher cost in memory
@@ -162,9 +162,9 @@ held back.
 
 ## Break it again
 
-Weaken the hazard pointer's store to a release, or the writer's load of it to an acquire. Both
-are correct-looking and both are wrong, for the reason the trace cannot show and
-[ch10](#sequential-consistency) could: the reader's store and load, and the writer's store and
+Weaken the hazard pointer's store to a release, or the writer's load of it to an acquire. Both are
+correct-looking and both are wrong, for the reason this panel's trace does not offer and
+[ch10](#sequential-consistency) showed: the reader's store and load, and the writer's store and
 load, are the store-buffer pattern, and only sequential consistency, or a fence, forbids the
 outcome where each misses the other. The kernel keeps the strong orderings; the lesson is that
 reclamation is where the weaker orderings of Part III stop being enough.
@@ -190,8 +190,7 @@ store-then-load must not both miss: the store-buffer test, with memory at stake.
 traversal of a list needs a hazard per node it holds, and the bookkeeping is the cost.
 
 **What garbage collection changes.** A language with a collector has no reuse problem: a node a
-reader holds is not freed. It has the ABA problem still, unless the collector ensures a popped
-node is never the same object as a pushed one, which most do.
+reader holds is not freed. It has the ABA problem still if the program pushes the same node object back; a program that allocates a fresh node per push does not, because the collector never reuses an address a reader still holds.
 
 **The whole design space.** Epochs, quiescent states, reference counts with deferred frees, and
 the schemes that combine them. [ch20](#rcu) is one; the sources below are the rest.

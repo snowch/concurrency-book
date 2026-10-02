@@ -45,8 +45,10 @@ version: as written
 
 Try these, in order, and stop after each to think:
 
-1. **Run it.** *Oversold* is not zero, on a device with more than one core. The office sold seats
-   that did not exist, and *Seats left* is below zero. One worker alone: exact. Two: oversold.
+1. **Run it.** *Oversold* is almost never zero on a device with more than one core; the trace in step 4
+   is where it is certain. The office sold seats that did not exist: *Booked* is above *Seats on
+   sale*, and *Seats left* reads zero, because each worker stored one less than the count it had
+   read. One worker alone: exact.
    Which chapter is this?
 2. **Set the busy steps to zero.** Oversold still, less often. The window is narrower; it is not
    gone. Which two operations is the window between?
@@ -73,13 +75,13 @@ pair not. The check reads one seat; the decrement subtracts one, atomically, fro
 count holds by then, which may be zero. Atomicity belongs to an operation, and the decision
 needs two.
 
-The fix is to make the decision part of the act: take the seat only if the count is still what
-the check saw, which is [ch04](#compare-and-swap)'s loop. A failed compare-and-swap means another
-worker took a seat in the window; the loop reads the new count and decides again, and when the
-count reads zero it refuses. Or, with a lock, make the check and the act one critical section, as
-in [ch05](#test-and-set-and-spinlocks), at the cost of every worker waiting through every
-confirmation. The compare-and-swap version confirms outside the atomic step and pays only on a
-contest:
+The fix is to make the decision part of the act: take the seat only if the count is still what the
+check saw, which is [ch04](#compare-and-swap)'s loop. A failed compare-and-swap means the count
+changed in the window or, with the weak form the kernel uses, that the attempt must be made again;
+the loop reads the new count and decides again, and when the count reads zero it refuses. Or, with
+a lock, make the check and the act one critical section, as in [ch05](#test-and-set-and-spinlocks),
+at the cost of every worker waiting through every confirmation. The compare-and-swap version
+confirms outside the atomic step and pays only on a contest:
 
 ```{include} _generated/challenge-trace-cas.md
 ```
@@ -112,7 +114,7 @@ The office as written and with atomics, side by side:
 ::::
 
 The two have the same shape: a load and a compare, the busy loop, and a decrement, which in the
-atomic version is a `lock sub` or an exclusive pair or `amoadd` of minus one, and in the written
+atomic version is a `lock dec`, an exclusive pair, or an `amoadd` of minus one, and in the written
 version a plain load, subtract and store. The window is the busy loop in both, and no instruction
 in either closes it. Compare with the compare-and-swap version, whose decrement is conditional on
 the count being what the check saw:
@@ -152,9 +154,10 @@ version: compare-and-swap
 lock: version
 ```
 
-The lock would also fix it, and the panel offers it. Compare the times: the lock serialises
-every confirmation, so the office sells at the speed of one clerk; the compare-and-swap lets
-every worker confirm at once and pays only when two of them reach for the last seat together.
+The lock would also fix it, and the panel offers it. Compare the times: the lock serialises every
+confirmation, so the office sells at the speed of one clerk; the compare-and-swap lets every worker
+confirm at once and pays, with a fresh confirmation, whenever another worker took a seat during its
+own.
 
 ## Break it again
 
@@ -186,7 +189,7 @@ mechanism's ordering carries the data the decision needs.
 ## What this cannot tell you
 
 **How often it fails in production.** The kernel's confirmation makes the window wide so that the
-page shows it; a real office with a narrow window fails once a week, which is worse.
+page shows it; a real office with a narrow window fails rarely, which is worse.
 
 **Whether your fix is complete.** The compare-and-swap closes the window on the count. A program
 with more shared state has more windows, and each needs its own look.

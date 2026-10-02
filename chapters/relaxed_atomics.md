@@ -52,9 +52,7 @@ Try these, in order:
    yet: *At the machine* shows that the WebAssembly the kernel runs has no relaxed store or load
    to emit, so the relaxed version got the strong instructions.
 2. **Switch to *volatile*.** Stale reads return, because the compiler reordered the volatile
-   version's stores and left the relaxed version's alone. That is the first of the three things
-   relaxed promises: the compiler knows another thread is involved, and will not reorder,
-   fold or hoist the atomic accesses as it does plain ones.
+   version's stores and left the relaxed version's alone. Relaxed did not promise that order: the compiler may move a plain store past a relaxed store of another variable, and here it chose not to. What relaxed promises is that the atomic accesses themselves are neither folded, hoisted nor reordered against each other.
 3. **Open the deterministic trace** with *relaxed* and the writer's stores reaching memory *flag
    first*. The model lets a relaxed flag overtake the data, as a weakly ordered processor does,
    and a stale read follows. The trace is the only place in this browser where relaxed's missing
@@ -126,18 +124,18 @@ the instruction set has one atomic load and it is the strong one.
 The writer's side is in [ch08](#acquire-and-release)'s fragments: a relaxed store is a plain
 `str` on AArch64, a plain `sw` on RISC-V, a plain `mov` on x86-64.
 
-So relaxed is the atomic that costs what a plain access costs, on every target where a plain
-access is already atomic for an aligned word, which is all of them. What you buy with it is
-the compiler's honesty and the one order per variable; what the processor adds is nothing,
-which is why it adds nothing to the time.
+So a relaxed load or store costs what a plain one costs, on every target where an aligned word is already atomic, which is all of them. A relaxed read-modify-write still pays for its atomicity, as ch03's lock prefix showed. What you buy with it is the compiler's
+honesty and the one order per variable; what the processor adds is nothing, on these instructions;
+the page does not time them.
 
 ## Fix one thing
 
 The fix is to use each ordering for what it promises. A counter that nobody reads to learn about
 other data: relaxed, as ch03's is. A flag that says other data is ready: release and acquire, as
-ch08's is. This panel runs the relaxed counter's cousin, the relaxed flag, and is locked so you
-can set the trials and watch that the count of trials itself is always exact, which is the
-promise relaxed keeps, while the stale count is the promise it does not make:
+ch08's is. This panel runs the relaxed counter's cousin, the relaxed flag, and is locked so you can
+set the trials and watch the stale count, which is the promise relaxed does not make. The promise
+it keeps, an exact count under contention, is ch03's panel, while the stale count is the promise it
+does not make:
 
 ```lab
 experiment: publication
@@ -148,13 +146,14 @@ ordering: relaxed
 
 ## Break it again
 
-The trace already broke it: a relaxed flag with the stores reordered. The live run cannot, in
-this browser. That gap between what a program may do and what it did on one machine is the
-most dangerous thing in this book. A program with a relaxed flag passes every test on x86-64,
-because x86-64 keeps stores in order and loads in order; it passes every test in this browser,
-because WebAssembly's atomics are all strong; and it fails on a phone, where AArch64's `str` and
-`ldr` owe it nothing. The fix was never to find the machine that shows the failure. It was to
-ask the language for the order, and let each target pay for it as the fragments show.
+The trace already broke it: a relaxed flag with the stores reordered. The live run cannot, in this
+browser. That gap between what a program may do and what it did on one machine is the most
+dangerous thing in this book. A program with a relaxed flag passes every test on x86-64 when the
+compiler happens to keep the stores in order, as this one did, because the architecture then keeps
+them in order too; it passes every test in this browser, because WebAssembly's atomics are all
+strong; and it fails on a phone, where AArch64's `str` and `ldr` owe it nothing. The fix was never
+to find the machine that shows the failure. It was to ask the language for the order, and let each
+target pay for it as the fragments show.
 
 ## The mental model
 
@@ -166,7 +165,7 @@ variable being shared; and one modification order per variable that every thread
 
 **Relaxed withholds one thing.** Any relationship with any other variable.
 
-**It costs what a plain access costs.** `str`, `ldr`, `mov`, `sw`: the same instructions. The
+**A relaxed load or store costs what a plain one costs.** `str`, `ldr`, `mov`, `sw`: the same instructions. The
 promises are kept by the compiler and by coherence, not by a fence.
 :::
 

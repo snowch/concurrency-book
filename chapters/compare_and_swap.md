@@ -64,8 +64,7 @@ operation: cas
 Try these, in order:
 
 1. **Run it.** *Observed* equals *Expected*: every increment landed, as in ch03's atomic run. Now
-   look at *Retries*. Thousands of compare-and-swaps failed and went round again, and the count
-   changes every run. Nothing was lost, because a failure is not a loss: it is a decision to
+   look at *Retries*. Some compare-and-swaps failed and went round again, and the count changes every run. Nothing was lost, because a failure is not a loss: it is a decision to
    look again.
 2. **Add workers.** More workers, more lost contests: *Retries* grows faster than the work does.
    *Most by one worker* shows how unevenly the contests fall. Some workers lose far more than
@@ -131,8 +130,7 @@ is the next chapter's subject.
 :::
 ::::
 
-**x86-64** has `cmpxchg`, with the `lock` prefix from ch03. The expected value goes in `eax` by
-convention; the instruction compares it with the word, stores the new value from the other
+**x86-64** has `cmpxchg`, with the `lock` prefix from ch03. The expected value goes in `eax`, which the instruction defines, not the compiler; the instruction compares it with the word, stores the new value from the other
 register on a match, and on a mismatch loads the word's current value into `eax`, which is why
 the C's `seen` is up to date after a failure without another load. The compiler emitted the
 first attempt and the retry loop as two copies of the same instruction, one for the common case
@@ -140,8 +138,7 @@ of no contest.
 
 **AArch64** has no single compare-and-swap in its base instruction set, so the compiler builds
 one from the exclusive pair you met in ch03: `ldxr` loads and watches the word, `cmp` and `b.ne`
-leave if it is not what was expected, `stxr` stores only if nothing touched the word since the
-load. `clrex` on the failure path drops the watch. The loop labelled `.LBB1_6` is the retry. With
+leave if it is not what was expected, `stxr` stores only if nothing wrote the word since the load. `clrex` on the failure path drops the watch. The loop labelled `.LBB1_6` is the retry. With
 **LSE** the whole thing is one instruction, `cas`, which compares and swaps in memory as x86-64's
 does; the fragment is in the LSE tab.
 
@@ -150,16 +147,16 @@ as AArch64's exclusives, with `bne` leaving on a mismatch and `bnez` retrying wh
 conditional failed.
 
 **WebAssembly** has `i32.atomic.rmw.cmpxchg`: compare and exchange, one instruction, which
-returns the value the word held. The browser's engine lowers it to whichever of the above the
-host has.
+returns the value the word held. The browser's engine lowers it to a compare-and-swap of the host's own, which may or may not be one of the above.
 
-Two kinds of failure appear in these fragments, and the C hides the distinction. A
-compare-and-swap can fail because the value differed, which is the contest the loop expects. On
-AArch64 and RISC-V it can also fail because the store-conditional lost its reservation for a
-reason that has nothing to do with the value, an interrupt or another core touching the same
-cache line. That is why the C says `weak`: a weak compare-and-swap may fail spuriously, and the
-loop around it must tolerate that, which it does, because it retries on any failure. The
-`strong` form hides a loop inside itself.
+Two kinds of failure appear in these fragments, and the C hides the distinction. A compare-and-swap
+can fail because the value differed, which is the contest the loop expects. On AArch64 and RISC-V
+it can also fail because the store-conditional lost its reservation for a reason that has nothing
+to do with the value: an interrupt, or another core's write to a nearby word inside the same
+reservation granule, whose size the instruction set leaves to the implementation. That is why the C
+says `weak`: a weak compare-and-swap may fail spuriously, and the loop around it must tolerate
+that, which it does, because it retries on any failure. On these two targets the `strong` form
+hides a loop inside itself; on x86-64 it needs none.
 
 ## Fix one thing
 
@@ -207,10 +204,12 @@ The acquire and release, at the machine:
 ::::
 
 The acquire is the compare-and-swap of zero to one in a loop, and the release is a store of zero.
-Notice the release on each target. On x86-64 it is a plain `mov`. On AArch64 it is `stlr`, a
-store with release semantics, and on RISC-V a `fence` before the store; on WebAssembly an atomic
-store. The C asked for `memory_order_release` on every target and each paid for it in its own
-way, including by paying nothing. What that ordering buys is [ch08](#acquire-and-release).
+Notice the release on each target. On x86-64 the compiler emitted a plain `mov`, because the
+instruction set already keeps a store behind this thread's earlier accesses, which
+[ch15](#x86-is-not-the-model) is about. On AArch64 it is `stlr`, a store with release semantics,
+and on RISC-V a `fence` before the store; on WebAssembly an atomic store. The C asked for
+`memory_order_release` on every target and each paid for it in its own way, including by paying
+nothing. What that ordering buys is [ch08](#acquire-and-release).
 
 ## Break it again
 
@@ -246,8 +245,7 @@ scheduling. It shows that contests are frequent and uneven; it does not give a r
 **What the lock's orderings do.** The acquire and release are correct and necessary, and this
 chapter has not said why. Part III does.
 
-**Whether a retry was a contest or a spurious failure.** The C and the WebAssembly cannot tell
-them apart, and on the browser's host the loop may be seeing either. The native fragments show
+**Whether a retry was a contest or a spurious failure.** In the browser a retry is always a contest: `i32.atomic.rmw.cmpxchg` cannot fail spuriously, and any spurious failure on the host is retried inside the engine, out of the kernel's sight. Only the native build on AArch64 or RISC-V counts a spurious failure as a retry. The native fragments show
 where each kind can arise.
 
 ## Where to go next

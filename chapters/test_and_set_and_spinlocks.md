@@ -75,9 +75,10 @@ Try these, in order:
 ## What the source hides
 
 The exchange is an atomic read-modify-write like ch03's add: read the word, write a one, return
-what was read, indivisibly. What the loop hides is that a failed attempt is not free. On every
-architecture an exchange is a write, and a write takes the cache line into the writing core's
-cache in exclusive state, which takes it away from the holder. A spinning waiter that exchanges
+what was read, indivisibly. What the loop hides is that a failed attempt is not free. An exchange
+is a write, and on a core with the usual coherent caches a write takes the cache line into the
+writing core's cache in exclusive state, away from the holder. That is the microarchitecture, which
+no instruction set promises and [ch12](#cache-coherence) measures. A spinning waiter that exchanges
 in a tight loop is pulling the lock's line across the machine on every iteration, and the holder
 has to pull it back to release. Many waiters make this worse than linearly.
 
@@ -157,14 +158,17 @@ the exchange:
 :::
 ::::
 
-The relaxed atomic load the waiter spins on is a plain `mov` on x86-64 and a plain `ldr` on
-AArch64. Reading a word the core already has a copy of costs nothing outside the core, which is
-the whole point. The exchange is attempted only after the load reads zero.
+For the relaxed atomic load the waiter spins on, the compiler emitted a plain `mov` on x86-64 and a
+plain `ldr` on AArch64: an aligned word is read whole by those instructions already, so the
+language's promise costs nothing extra. On a core with coherent caches, reading a word it already
+holds costs nothing outside the core, which is the whole point. The exchange is attempted only
+after the load reads zero.
 
 One thing neither fragment shows: a real spinlock usually tells the processor it is spinning.
-x86-64 has a `pause` instruction and AArch64 a `yield` hint for exactly this loop, which slow the
-loop a little and save power and pipeline capacity; production spinlocks also back off, waiting
-longer after each failure. The kernel leaves both out so the loop stays the book's shape.
+x86-64 has a `pause` instruction and AArch64 a `yield` hint for exactly this loop, which pause it
+for a length the core chooses and save power and pipeline capacity; production spinlocks also back
+off, waiting longer after each failure. The kernel leaves both out so the loop stays the book's
+shape.
 
 ## Fix one thing
 
@@ -222,8 +226,7 @@ Release is a store of zero.
 no work; the holder's speed, if the waiters' exchanges keep pulling the lock's cache line away;
 and fairness, which nothing in the loop provides.
 
-**Spin on a read, then exchange.** A waiter that reads until the lock looks free costs the holder
-nothing, and tries the exchange only when it has a chance.
+**Spin on a read, then exchange.** A waiter that reads until the lock looks free costs the holder almost nothing while it holds the lock, and tries the exchange only when it has a chance.
 :::
 
 ## What this cannot tell you

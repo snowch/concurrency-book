@@ -60,10 +60,12 @@ Try these, in order:
    for a ping and a pong: two wake-ups. On most devices it is several microseconds, which is a
    long time for a processor: a thread that is asleep is woken by the engine, which asks the
    operating system, which schedules it.
-2. **Switch the waiting to *spin*.** The same round trips in a fraction of the time, with
-   spins instead of sleeps. A spinning worker sees the word change within the time it takes the
-   line to arrive, which is the coherence latency of [ch12](#cache-coherence), a few tens of
-   nanoseconds, and no scheduler is involved.
+2. **Switch the waiting to *spin*.** With a core free for each worker, the same round
+   trips in a fraction of the time, with spins instead of sleeps; with one core the spinner burns
+   its slice, and the round trip is the scheduler's. A spinning worker sees the word change once
+   the line arrives, the coherence latency of [ch12](#cache-coherence) on your device, with no
+   scheduler involved; the spin counter it increments is on a line both workers want, and is in
+   the time too.
 3. **Open the deterministic trace.** With sleep and wake, a waiting worker takes no steps until
    the other's notify; with spinning, it takes a step per turn and changes nothing. Step it by
    hand and watch A fall asleep on pong and wake when B says it.
@@ -93,12 +95,13 @@ between. The trace:
 ```
 
 And one thing the book has hidden on purpose until now. A browser hands a page shared memory only
-when the page is cross-origin isolated, which means served with two headers that forbid it from
-embedding, or being embedded by, pages of other origins. The reason is a class of timing attacks,
-Spectre among them, that a shared memory and a fine clock make practical against anything in
-the same process. The host this book is published on cannot send those headers, so the book's
-pages install a service worker that adds them to every response and reload themselves once. You
-saw none of that; a page that cannot be isolated offers its trace and its desk commands instead.
+when the page is cross-origin isolated, which means served with two headers: one cuts the page off
+from windows of other origins that opened it or that it opens, the other forbids it to load
+anything from another origin that has not agreed to be loaded. The reason is a class of timing
+attacks, Spectre among them, that a shared memory and a fine clock make practical against anything
+in the same process. The host this book is published on cannot send those headers, so the book's
+pages install a service worker that adds them to every response and reload themselves once. You saw
+none of that; a page that cannot be isolated offers its trace and its desk commands instead.
 `CLAUDE.md` in the repository documents it for whoever maintains the book.
 
 ## At the machine
@@ -137,15 +140,17 @@ futex system call on Linux, and not an instruction at all; the harness makes tha
 
 The spinning wait is a load in a loop on every target, with the acquire that
 [ch08](#acquire-and-release) said a flag's load needs, so that whatever the other worker wrote
-before saying the word is visible after it is seen.
+before saying the word is visible after it is seen. On x86-64 the acquire costs no instruction,
+because the instruction set keeps loads in order; AArch64 shows `ldar`, and RISC-V a `fence r, rw`
+after the `lw`.
 
 ## Fix one thing
 
-The fix for a slow wake-up is not to need one: spin when the wait will be short, which is what
-the spin version does, and what a production lock does before it sleeps. The fix for a burned
-core is to sleep. The handshake kernel offers both and the panel's two numbers are the two
-sides. This panel is locked to spinning, so the per-round-trip time is the coherence latency of
-your device and nothing else:
+The fix for a slow wake-up is not to need one: spin when the wait will be short, which is what the
+spin version does, and what a production lock does before it sleeps. The fix for a burned core is
+to sleep. The handshake kernel offers both and the panel's two numbers are the two sides. This
+panel is locked to spinning, so no wake-up is in the per-round-trip time: what remains is the
+word's journey between the two cores, and the spin counter both workers increment while they wait:
 
 ```lab
 experiment: handshake
@@ -185,7 +190,7 @@ which the book's service worker makes every page into.
 ## What this cannot tell you
 
 **How the engine implements a wait.** It may park the thread in the operating system, spin
-briefly first, or both. The kernel's promise is only that a sleeping worker takes no steps.
+briefly first, or both. WebAssembly's promise is only that a waiting thread takes no steps until it is woken or times out.
 
 **The wake-up cost on your operating system.** The per-round-trip time is two wake-ups on this
 device, this run, through this browser. The native harness measures the futex directly.

@@ -2,8 +2,7 @@
  *
  * ch01 compiles `increment` and reads what it became. ch02 runs it on two workers and loses
  * increments. ch03 switches to `increment_atomic` and loses none, then splits it in two and loses
- * them again. ch21 runs it on one worker, then two, then more, and watches the rate fall. ch23
- * and ch24 take the kernel apart.
+ * them again. ch23 and ch24 take the kernel apart.
  */
 #include "../cm.h"
 

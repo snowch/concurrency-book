@@ -56,19 +56,20 @@ Try these, in order:
 
 ## What the source hides
 
-A cache does not hold words; it holds lines, sixty-four bytes on every processor this book
-targets, and it holds them in states. The simplest protocol worth describing has four: a line
-may be *modified* in one cache and nowhere else, *exclusive* to one cache but unchanged,
-*shared* by several caches for reading, or *invalid*. A core may read a line it holds in any
-state but invalid. A core may write a line only when it holds it modified or exclusive, which
-means every other cache's copy has been invalidated first.
+A cache does not hold words; it holds lines, sixty-four bytes on most cores for the three
+instruction sets, a hundred and twenty-eight on some; the size is the core's, not the instruction
+set's, and it holds them in states. The simplest protocol worth describing has four: a line may be
+*modified* in one cache and nowhere else, *exclusive* to one cache but unchanged, *shared* by
+several caches for reading, or *invalid*. A core may read a line it holds in any state but invalid.
+A core may write a line only when it holds it modified or exclusive, which means every other
+cache's copy has been invalidated first.
 
 So an atomic increment of a shared word, on a core whose cache holds the line in shared state,
 costs this: ask the other caches to give up their copies, wait until they have, perform the add,
 and hold the line modified. The next core to increment must take the line away in turn, and the
-modified data travels with it. The line bounces between the cores, and every bounce is a round
-trip across the chip, measured in tens of nanoseconds, which is a hundred times the add itself.
-That is the time the panel measured. Nothing in the increment instruction mentions it, and the
+modified data travels with it. The line bounces between the cores, and every bounce is a round trip
+across the chip, and the tile's nanoseconds per increment say what this device charged for it. That
+is the time the panel measured. Nothing in the increment instruction mentions it, and the
 instruction count is the same in every layout.
 
 The protocol is also what makes [ch09](#relaxed-atomics)'s one order per variable true. There is
@@ -102,23 +103,24 @@ The increment, which is the same instruction in every layout:
 :::
 ::::
 
-One locked `add`, one exclusive-load-and-store loop, one `amoadd.w`, one `i32.atomic.rmw.add`,
+One locked `inc`, one exclusive-load-and-store loop, one `amoadd.w`, one `i32.atomic.rmw.add`,
 exactly as in [ch03](#atomic-operations), with the address in a register rather than a symbol
-because the kernel passed it in. There is no instruction for the coherence traffic. The
-instruction set describes what a core does to its own view of memory; the protocol that keeps
-the views consistent is below it, in the microarchitecture, and the only way to see it from a
-program is to time it. That is why this chapter's experiment has no trace: the model of
-operations in Part I has nothing to say about where a line is.
+because the kernel passed it in. There is no instruction for the coherence traffic. The instruction
+set describes what a core does to its own view of memory; the protocol that keeps the views
+coherent is below it, in the microarchitecture, and the only way to see it from a program is to
+time it. That is why this chapter's experiment has no trace: the model of operations in Part I has
+nothing to say about where a line is.
 
-The AArch64 loop shows one thing the others hide. `ldxr` and `stxr` work by watching the line
-between the load and the store, and another core taking the line makes the store fail. Under
-heavy sharing the loop can run several times per increment, which is the protocol's cost
-appearing in the instruction stream.
+The AArch64 loop shows one thing the others hide. `ldxr` marks the address and `stxr` stores only
+if nothing else has written near it since; how near is the core's choice, and on most cores it is
+the line. Under heavy sharing the loop can run several times per increment, which is the protocol's
+cost appearing in the instruction stream.
 
 ## Fix one thing
 
 The fix is to stop sharing the line. This panel is locked to *own line*: each worker's counter
-sixty-four bytes from the next, so each line lives in one cache and never moves.
+sixty-four bytes from the next, so, where a line is sixty-four bytes, each line lives in one cache
+and never moves.
 
 ```lab
 experiment: sharing
@@ -146,7 +148,7 @@ returns to *same word*'s, and the next chapter is about why.
 copy; writing needs the only copy. Every write to a line another cache holds invalidates that
 copy first.
 
-**Coherence is a protocol, and the protocol is traffic.** A shared word that several cores write
+**Coherence is kept by a protocol, and the protocol is traffic.** A shared word that several cores write
 bounces between their caches, and the bounce costs a round trip across the chip per write.
 
 **Nothing in the instruction set shows it.** Same instruction, same count, different address,
@@ -159,8 +161,7 @@ different time. Timing is the only instrument.
 directories, and a browser does not say which processor it runs on. The panel measures the
 effect, not the mechanism.
 
-**The line size.** Sixty-four bytes on every target the book names, and a hundred and
-twenty-eight on some, including Apple's. The *two lines apart* layout exists for them.
+**The line size.** Sixty-four bytes on most cores, a hundred and twenty-eight on some, including Apple's AArch64 cores. The *two lines apart* layout exists for them.
 
 **The time of one bounce.** The live time is a whole run under the browser's scheduling. The
 ratio between layouts is the result; the absolute time is not.

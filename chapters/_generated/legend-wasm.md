@@ -5,7 +5,7 @@
 | Instruction | What it does | Why it matters here |
 |---|---|---|
 | `atomic.fence` (atomic or ordering) | A fence: this thread's earlier accesses are ordered before its later ones, as other threads see them. | The fence of ch11 in WebAssembly, which the engine lowers to whatever its host needs. |
-| `i32.atomic.rmw.add` (atomic or ordering) | Atomically adds to a 32-bit word in memory and pushes the old value. | ch03's atomic increment, which the engine lowers to the host's own atomic add. |
+| `i32.atomic.rmw.add` (atomic or ordering) | Atomically adds to a 32-bit word in memory and pushes the old value. | ch03's atomic increment, which the engine lowers to an atomic read-modify-write of its own choosing on the host. |
 | `i32.atomic.rmw.cmpxchg` (atomic or ordering) | Compare-and-swap on a 32-bit word: stores the new value if the word equals the expected one, and pushes the old value either way. | The compare-and-swap of ch04, and the foundation of every lock-free structure in Part V. |
 | `i32.atomic.rmw.sub` (atomic or ordering) | Atomically subtracts from a 32-bit word in memory and pushes the old value. | An atomic decrement: ch25's seat count when every access is atomic. |
 | `i32.atomic.rmw.xchg` (atomic or ordering) | Atomically exchanges a 32-bit word in memory and pushes the old value. | The test-and-set of ch05: one atomic swap takes the lock and reports whether it was free. |

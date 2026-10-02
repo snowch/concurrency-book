@@ -53,8 +53,7 @@ Try these, in order:
    a node points at itself or at a node above it, and the stack is destroyed.
 2. **Open the deterministic trace** and set the schedule to *manual*. Step A twice: A reads node
    one as the top and node two below it. Now step B to the end: B pops one, pops two, and pushes
-   one back; the head is one again, with three below it. Step A: its compare-and-swap expects
-   one, finds one, and swings the head to two, which B holds. The outcome line says so.
+   one back; the head is one again, with three below it. Step A three times: its compare-and-swap expects one, finds one, and swings the head to two, which B holds; once A has stored what it popped, the outcome line says so.
 3. **Switch the head to *tagged*.** *Not in the stack* is zero and the stack ends with its three
    nodes, every run. *Fix one thing* says what changed.
 4. **Repeat the trace with the tagged head.** The same interleaving, and A's compare-and-swap
@@ -69,10 +68,12 @@ present value. The trace is the whole problem in a dozen steps:
 ```{include} _generated/aba-trace-plain.md
 ```
 
-Between A's read of the node below and A's compare-and-swap, the head went from one to two to
-three to one. A's expected value is one; the head is one; the swap succeeds; the node below,
-which A read as two, is in B's hands. Nothing in the hardware is wrong. The compare-and-swap did
-exactly what [ch04](#compare-and-swap) said: compared a value, not a history.
+Read the head column down: one until step four, two at step five, three at step nine, one again at
+step thirteen. Step fourteen is the moment. Between A's read of the node below and A's
+compare-and-swap, the head went from one to two to three to one. A's expected value is one; the
+head is one; the swap succeeds; the node below, which A read as two, is in B's hands. Nothing in
+the hardware is wrong. The compare-and-swap did exactly what [ch04](#compare-and-swap) said:
+compared a value, not a history.
 
 The fix is to give the word a history. Put a version counter beside the index and compare and
 swap the two together, as one wider word. Every swing of the head adds one to the version, so a
@@ -82,9 +83,10 @@ compare fails:
 ```{include} _generated/aba-trace-tagged.md
 ```
 
-That needs a compare-and-swap on a word twice as wide as the index, which every target has for a
-64-bit word. The other fix is to make the assumption true again: never reuse a node while any
-thread might be between its reads and its swap, which is [ch18](#memory-reclamation).
+That needs a compare-and-swap on a word twice as wide as the index, which each of this book's four
+targets has for a 64-bit word; a 32-bit host need not. The other fix is to make the assumption true
+again: never reuse a node while any thread might be between its reads and its swap, which is
+[ch18](#memory-reclamation).
 
 ## At the machine
 
@@ -119,11 +121,11 @@ compare-and-swap is on the whole word:
 :::
 ::::
 
-On **x86-64** it is `lock cmpxchg` on a `qword`, the 64-bit form, with the version added in the
-high register. **AArch64** uses the exclusive pair on `x` registers, or `casa` on an `x`
-register with **LSE**. **RISC-V** has `lr.d` and `sc.d`. **WebAssembly** has
-`i64.atomic.rmw.cmpxchg`, and the index arithmetic around it is the 64-bit shifts and masks the
-macros in the kernel spell out.
+On **x86-64** it is `lock cmpxchg` on a `qword`, the 64-bit form, with the version moved on by one
+`add` of a constant that is one in the high half, which `movabs` put in a register. **AArch64**
+uses the exclusive pair on `x` registers, or `casa` on an `x` register with **LSE**. **RISC-V** has
+`lr.d` and `sc.d`. **WebAssembly** has `i64.atomic.rmw.cmpxchg`, and the index arithmetic around it
+is the 64-bit shifts and masks the macros in the kernel spell out.
 
 A real pointer is already 64 bits wide on these targets, so a tagged pointer needs either a
 128-bit compare-and-swap, which x86-64 has as `cmpxchg16b` and AArch64 as `casp`, or spare bits
@@ -153,10 +155,10 @@ The kernel's tagged push and pop:
 ## Break it again
 
 Remove the tag and keep the reuse: that is the plain head, and the panel at the top. Or keep the
-tag and let the version counter be narrow enough to wrap during one slow pop, which no kernel
-here can show and which has happened in production with a sixteen-bit tag. The honest statement
-is that a tag turns a certain failure into an unlikely one, and that the fix with a proof is
-the next chapter's.
+tag and let the version counter be narrow enough to wrap during one slow pop, which no kernel here
+can show and which has happened in production with a sixteen-bit tag. The honest statement is that
+a tag turns a failure this workload all but guarantees into one that needs the counter to wrap, and
+that the fix with a proof is the next chapter's.
 
 ## The mental model
 
@@ -164,8 +166,7 @@ the next chapter's.
 :class: model
 
 **Compare-and-swap compares a value, not a history.** A word that changed and changed back
-compares equal. For a counter that is harmless; for a pointer it means a different object at the
-same address.
+compares equal. For a counter that is harmless; for a pointer it means the same address with something different behind it: the same node re-linked, or another object there.
 
 **ABA needs reuse.** A node popped and pushed again, or memory freed and reallocated, while a
 thread is between its reads and its swap.

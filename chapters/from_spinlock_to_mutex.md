@@ -20,11 +20,11 @@ mutex from an atomic variable with a loop around it.
 
 ## The smallest program
 
-The laboratory's kernels can sleep. `cm_wait` puts the calling worker to sleep as long as a word
-holds a given value, and `cm_notify_one` wakes one worker asleep on it; in WebAssembly these are
-two instructions, which [ch22](#webassembly-threads) is about, and natively they are the futex
-system call. The lock word now has three states, because a release must know whether anybody is
-asleep:
+The laboratory's kernels can sleep. `cm_wait` puts the calling worker to sleep if a word still
+holds a given value, until a notify on that word, and `cm_notify_one` wakes one worker asleep on
+it; in WebAssembly these are two instructions, which [ch22](#webassembly-threads) is about, and
+natively, on Linux, they are the futex system call; on a desk without futexes the harness spins
+instead. The lock word now has three states, because a release must know whether anybody is asleep:
 
 ```{literalinclude} ../experiments/mutex/mutex.c
 :language: c
@@ -69,16 +69,14 @@ operation: spin
 Try these, in order:
 
 1. **Run it as it is, then switch the lock to *sleep*.** Both are exact. Compare the tiles:
-   the spinlock made hundreds of thousands of spins, the sleeping lock made none and slept a few
-   hundred times. Compare *Elapsed* on your device. On some the sleeping lock is faster, because
+   the spinlock spins and never sleeps; the sleeping lock sleeps and never spins, and your device says how many of each. Compare *Elapsed* on your device. On some the sleeping lock is faster, because
    the holder had its core to itself; on some the spinlock is, because the critical section was
    shorter than the cost of a sleep and a wake. Both are right. The chapter is the trade-off,
    not the winner.
 2. **Lengthen the critical section.** With ten thousand busy steps inside the lock, sleeping
    usually wins and by more with every worker you add past the core count: a spinner's core is
    wasted for the whole critical section, a sleeper's is free.
-3. **Shorten it to ten steps.** Now the lock is held for less time than a wake-up takes, and
-   spinning usually wins: the sleeper is woken after the lock has already been taken and released
+3. **Shorten it to ten steps.** Now the lock is likely held for less time than a wake-up takes, and spinning usually wins: the sleeper is woken after the lock has already been taken and released
    several times by workers that never slept.
 4. **Switch to *spin-then-sleep*.** A hundred tries, then sleep. Spins and sleeps both appear,
    and *Elapsed* is near the better of the two. This is what production mutexes do.
@@ -159,9 +157,9 @@ operation: sleep
 lock: operation
 ```
 
-The fix for the wake-up's cost on a short critical section is to spin first, which you ran above
-as *spin-then-sleep*. Production mutexes add more: they spin only while the holder is running on
-another core, back off, and park waiters in a queue so the longest waiter is woken first. Each
+The fix for the wake-up's cost on a short critical section is to spin first, which you ran above as
+*spin-then-sleep*. Production mutexes add more: some spin only while the holder is running on
+another core, some back off, and some queue waiters so the longest wait is served first. Each
 addition pays for a case this kernel does not measure.
 
 ## Break it again
@@ -179,7 +177,7 @@ wait that did not compare would have slept with nobody left to wake it.
 :class: model
 
 **A mutex is a spinlock whose waiters can stop running.** Taking it is ch04's compare-and-swap.
-Waiting is a request to the scheduler: sleep while this word holds this value.
+Waiting is a request to the scheduler: if this word still holds this value, sleep until someone notifies on it.
 
 **Sleeping needs the compare.** Wait sleeps only if the word still holds what the waiter expects,
 atomically against the wake; otherwise a release can land in the gap and the wake-up is lost.

@@ -62,8 +62,7 @@ ordering: volatile
 
 Try these, in order:
 
-1. **Run it with *volatile*.** On an x86-64 device, *Both loaded zero* is not zero. Thousands of
-   trials, often a few per cent, ended with each thread missing the other's store. Nothing
+1. **Run it with *volatile*.** On an x86-64 device with more than one core, expect *Both loaded zero* above zero. How far above is this run's observation, not a rate. Nothing
    interleaved those four operations; the processor did something else, which
    [ch14](#store-buffers-and-visibility) names. On an AArch64 device the count is there too.
 2. **Switch to *seq_cst*.** Zero, every run. Each thread's store is now visible before its own
@@ -79,12 +78,12 @@ Try these, in order:
 ## What the source hides
 
 Sequential consistency is the ordering every programmer assumes without knowing it has a name:
-there is one order of all the operations of all the threads, each thread's operations appear in
-it in program order, and every load sees the last store before it in that order. Under it, the
-four-operation test has exactly the three outcomes interleaving allows. The processor does not
-provide it by default, because providing it means a store must be visible to every other core
-before this core may run its next load, and a store takes time to become visible. The model's
-store buffer is where the store waits:
+there is one order of all the operations of all the threads, each thread's operations appear in it
+in program order, and every load sees the last store before it in that order. Under it, the
+four-operation test has exactly the three outcomes interleaving allows. Most processors do not
+provide it, because providing it means a store must be visible to every other core before this core
+may run its next load, and a store takes time to become visible. The model's store buffer is where
+the store waits:
 
 ```{include} _generated/store_buffer-trace-buffered.md
 ```
@@ -125,10 +124,8 @@ The four versions of thread A's half:
 
 **x86-64** is the one to read first. The volatile, relaxed and release-acquire versions are the
 same two instructions: `mov` to store, `mov` to load. The sequentially consistent version stores
-with `xchg`, an atomic exchange, whose implicit lock makes the processor complete the store, out
-of the buffer and into the cache, before anything after it. One instruction changed, and the
-outcome disappears. The compiler could have emitted a `mov` followed by `mfence`; `xchg` is
-cheaper and does the same.
+with `xchg`, an atomic exchange, whose implicit lock the architecture defines as a full barrier: the store is visible before anything after it runs. On the cores the book knows, that means draining the store buffer. One instruction changed, and the
+outcome disappears. The compiler could have emitted a `mov` followed by `mfence`; on current cores `xchg` is cheaper, and for ordinary stores and loads it orders the same.
 
 **AArch64** charges `stlr` and `ldar` for release-acquire and the same two for sequentially
 consistent: on AArch64 a store-release followed by a load-acquire is already ordered, which is a
@@ -152,9 +149,9 @@ ordering: seq_cst
 
 The default ordering in C and C++, when none is written, is sequentially consistent. That is a
 sensible default: it is the one whose programs can be reasoned about as interleavings, and the
-fragments show its cost is one exchange or one fence per operation. The weaker orderings exist
-for programs that know they do not need the single order, such as every handover in
-[ch08](#acquire-and-release), and every counter in [ch03](#atomic-operations).
+fragments show its cost is one exchange per store on x86-64, and a fence per access on RISC-V. The
+weaker orderings exist for programs that know they do not need the single order, such as every
+handover in [ch08](#acquire-and-release), and every counter in [ch03](#atomic-operations).
 
 ## Break it again
 

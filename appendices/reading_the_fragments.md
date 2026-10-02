@@ -73,9 +73,10 @@ and `amoadd` and `amoswap` the one-instruction forms.
 A stack machine, so instructions name no registers. `local.get 0` pushes the function's first
 argument or local, `i32.load` pops an address and pushes the 32-bit word there, and `i32.store`
 pops a value and an address. The number after a memory instruction is an offset added to the
-address. Locals belong to the function; globals, such as the stack pointer, to the module. The
-`atomic` instructions are sequentially consistent, and the plain ones promise neither atomicity
-nor ordering on shared memory, which is what [ch22](#webassembly-threads) builds on.
+address. Locals belong to the function; globals, such as the stack pointer, to the instance, so
+every instance of the module has its own copy. The `atomic` instructions are sequentially
+consistent, and the plain ones promise neither atomicity nor ordering on shared memory, which is
+what [ch24](#from-wasm-to-machine-code) builds on.
 
 ```{include} ../chapters/_generated/legend-wasm.md
 ```

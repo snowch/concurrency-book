@@ -61,7 +61,7 @@ lowering of each; they are not a promise about your compiler.
 ## What you need
 
 - clang 18 with `wasm-ld` (the LLVM WebAssembly linker). On Debian and Ubuntu:
-  `apt install clang-18 lld-18`. The build refuses another major version for the fragments,
+  `apt install clang-18 lld-18`. The build refuses any clang other than clang 18.1 for the fragments for the fragments,
   because they are checked byte for byte; the native harness builds with any recent clang or gcc.
 - Python 3.11 or later, with the packages in `requirements.txt`.
 - Node.js 22 and the pinned MyST, for the book itself: `make install`.

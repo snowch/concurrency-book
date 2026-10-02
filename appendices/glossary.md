@@ -15,8 +15,7 @@ it. Paired with a release, it completes a handover. [ch08](#acquire-and-release)
 **Atomic operation.** An operation that other threads see as one indivisible step: either it has
 not happened or it has, never half. [ch03](#atomic-operations)
 
-**Cache line.** The unit a cache holds and the coherence protocol moves: sixty-four bytes on
-every target the book names. [ch12](#cache-coherence)
+**Cache line.** The unit a cache holds and the coherence protocol moves. Its size is the core's, not the instruction set's: sixty-four bytes on most processors the book runs on, a hundred and twenty-eight on some. [ch12](#cache-coherence)
 
 **Check-then-act.** A decision made from a value read earlier, acted on after other threads may have changed it: the shape of the booking office's bug. [ch25](#diagnose-the-race)
 
@@ -28,20 +27,17 @@ the value expected, and reports which happened. [ch04](#compare-and-swap)
 
 **Cross-origin isolation.** The state a browser requires of a page before it will give it shared memory, set by two response headers; the book's service worker provides them. [ch22](#webassembly-threads)
 
-**Data race.** Two threads accessing the same variable, at least one writing, with nothing to
-order them. In C it is undefined behaviour; in WebAssembly it has a defined but weak meaning.
+**Data race.** Two threads making plain accesses to the same variable, at least one writing, with nothing to order them. In C it is undefined behaviour; in WebAssembly it has a defined but weak meaning.
 [ch02](#two-threads-one-variable)
 
 **False sharing.** Two variables on one cache line, written by different threads, which the
 protocol moves between the cores as if the variables were shared. [ch13](#false-sharing)
 
-**Fence.** An instruction that orders this thread's accesses before it against those after it,
-as other threads see them, touching no variable. [ch11](#fences)
+**Fence.** An operation that orders this thread's accesses before it against those after it, as other threads see them, touching no variable; an instruction on some targets, nothing on others. [ch11](#fences)
 
 **Grace period.** The wait, after a writer publishes a new record, until every reader that might have been reading the old one has finished. [ch20](#rcu)
 
-**Happens-before.** The relationship between a store and a load that is guaranteed to see it,
-created by a release store read by an acquire load. [ch08](#acquire-and-release)
+**Happens-before.** The order the language guarantees between operations in different threads: everything before a release store happens before everything after the acquire load that reads it. [ch08](#acquire-and-release)
 
 **Hazard pointer.** A word per reader naming the record it is about to read, which a writer checks before reusing a record. [ch18](#memory-reclamation)
 
@@ -60,7 +56,7 @@ sleeps on a lock that is free. A wait that compares before sleeping prevents it.
 **Quiescent state.** A point where a reader holds no reference to any record, which it marks for the writer; a grace period ends when every reader has passed one. [ch20](#rcu)
 
 **Read-modify-write.** An operation that reads a value, computes from it and writes the result.
-Plain, it is three steps; atomic, it is one. [ch01](#what-x-plus-plus-does)
+Plain, it is three operations however many instructions it takes; atomic, it is one indivisible step. [ch01](#what-x-plus-plus-does)
 
 **Relaxed.** The ordering that promises atomicity, the compiler's honesty and one order per
 variable, and nothing about any other variable. [ch09](#relaxed-atomics)
@@ -73,13 +69,13 @@ it. [ch08](#acquire-and-release)
 **Scalability.** How the rate of work changes as workers are added; a shared word's rate falls, a word per worker's holds. [ch21](#contention-and-scalability)
 
 **Sequential consistency.** One order of every thread's operations, each in program order, every
-load seeing the last store before it. The strongest ordering, and the default.
+load seeing the last store before it. The strongest ordering, and C's default when an atomic operation names no ordering.
 [ch10](#sequential-consistency)
 
 **Shared memory.** Memory more than one thread can read and write. In the laboratory, one
 WebAssembly memory every worker's instance imports. [ch02](#two-threads-one-variable)
 
-**Spinlock.** A lock whose waiters loop on an atomic exchange until it returns zero.
+**Spinlock.** A lock whose waiters loop, on a load or an exchange, until the word reads free and an exchange takes it.
 [ch05](#test-and-set-and-spinlocks)
 
 **Store buffer.** The queue beside a core's cache where a store waits for its line, invisible

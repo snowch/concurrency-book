@@ -43,20 +43,18 @@ ordering: volatile
 
 Try these, in order:
 
-1. **Run it on an x86-64 device.** *Both loaded zero* is thousands out of a hundred thousand.
+1. **Run it on an x86-64 device.** *Both loaded zero* is above zero, and the tile says by how much on this device.
    That is the store buffer: each thread's store was in its buffer, invisible to the other core,
    while the thread's load read the other word from the cache. x86-64 reorders nothing else, and
    it reorders this.
-2. **Run it on an AArch64 device**, a phone or a recent Mac, if you have one. The outcome appears
-   there too, and the other three outcomes are distributed differently, because AArch64 may also
-   reorder the loads and the stores among themselves. [ch15](#x86-is-not-the-model) compares.
-3. **Raise the trials to a million.** The fraction stays about the same. The window between a
-   store entering the buffer and leaving it is a few nanoseconds, and the test hits it a few per
-   cent of the time, run after run.
+2. **Run it on an AArch64 device**, a phone or a recent Mac, if you have one. The outcome appears there
+   too. This test has one store and one load per thread, so the other reorderings AArch64
+   allows have nothing to act on here; [ch15](#x86-is-not-the-model) lists them.
+3. **Raise the trials to a million.** The count grows with the trials. The fraction is this
+   device's and this run's; the last section says why it is not a rate.
 4. **Switch to *fence*.** Zero. The fence waits for the buffer to drain before the load.
 5. **Open the deterministic trace** and step *alternate*: both stores enter their buffers, both
-   loads read memory, both get zero, and only then do the buffers drain. The model is the
-   mechanism, as far as this test can see.
+   loads read memory, both get zero, and only then do the buffers drain. The model and the hardware agree on every outcome this test can tell apart; the model is still a model.
 
 ## What the source hides
 
@@ -66,13 +64,13 @@ cache, and from that moment other cores can see it. The load that followed the s
 order ran during that process, and read the other core's word from its own cache, where the
 other core's store had likewise not yet arrived.
 
-Two more facts about the buffer explain two things seen earlier. First, a core's own loads look
-in the buffer before the cache, which is called store forwarding and is why a single thread never
-notices the buffer exists: [ch01](#what-x-plus-plus-does)'s single worker was always exact.
-Second, on x86-64 the buffer drains in order, so a store never overtakes an earlier store and a
-load never overtakes an earlier load; the only reordering x86-64 permits is the one in this test,
-a load overtaking an earlier store to a different address. That one permission is the whole of
-the difference between x86-64 and sequential consistency. The model, once more:
+Two more facts about the buffer explain two things seen earlier. First, a core's own loads look in
+the buffer before the cache, which is called store forwarding and is why a single thread never
+notices the buffer exists: [ch01](#what-x-plus-plus-does)'s single worker was always exact. Second,
+on x86-64 the buffer drains in order, so a store never overtakes an earlier store; a separate rule
+of the architecture keeps loads in order too; the only reordering x86-64 permits is the one in this
+test, a load overtaking an earlier store to a different address. That one permission is the whole
+of the difference between x86-64 and sequential consistency. The model, once more:
 
 ```{include} _generated/store_buffer-trace-buffered.md
 ```
@@ -102,22 +100,22 @@ the difference between x86-64 and sequential consistency. The model, once more:
 :::
 ::::
 
-Look at the volatile version on **x86-64**: `mov` to memory, `mov` from memory. Nothing in the
-two instructions says that the first may still be pending when the second completes. The
-instruction set's ordering rules, which the manual states in prose, say it; the instructions do
-not. The sequentially consistent version's `xchg` is the instruction that waits: a locked
-operation drains the store buffer before it completes, and so everything after it sees a buffer
-that is empty.
+Look at the volatile version on **x86-64**: `mov` to memory, `mov` from memory. Nothing in the two
+instructions says that the first may still be pending when the second completes. The instruction
+set's ordering rules, which the manual states in prose, say it; the instructions do not. The
+sequentially consistent version's `xchg` is the instruction that waits: a locked operation is a
+full barrier, which on these cores means the store buffer drains before it completes, and so
+everything after it sees a buffer that is empty.
 
 On **AArch64** the plain `str` and `ldr` carry even fewer promises, and `stlr` and `ldar` carry
 them back. The volatile and relaxed versions are indistinguishable on every native target, and
 on this one point WebAssembly, whose volatile version is the plain `i32.store` and `i32.load`,
 is like the others.
 
-The browser's own result comes from this WebAssembly compiled by the engine to the host's plain
-store and load, which on x86-64 are the same two `mov` instructions as the native fragment. The
-engine did not add a fence, because the WebAssembly did not ask for one. That is why the browser
-shows the outcome on x86-64 for *volatile* and never for the atomic orderings.
+The browser's own result comes from this WebAssembly as the engine compiled it for the host. The
+engine added no fence, because the WebAssembly asked for none, so the host's own reordering
+applies. That is why the browser shows the outcome on x86-64 for *volatile* and never for the
+atomic orderings.
 
 ## Fix one thing
 

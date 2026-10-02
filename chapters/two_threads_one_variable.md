@@ -51,13 +51,13 @@ operation: plain
 Try these, in order. The live run is one observation on your device, and the point of the
 chapter is why it is one and not a rule.
 
-1. **Run it as it is.** On a device with more than one core, *Observed* is less than *Expected*,
+1. **Run it as it is.** On a device with more than one core, expect *Observed* below *Expected*,
    often by a large fraction, and *Lost* says by how much. Run it again: a different number. On
    a device with one core the two workers take turns on the processor, the window is rarely hit,
    and the count may be exact every time. An exact count proves nothing; the trace below shows
    why.
 2. **Add workers.** Four, eight, as many as the slider allows. More threads in the same window
-   lose more, and *Elapsed* rises: the cores are fighting over one cache line, which
+   lose more, and *Elapsed* rises: the cores are fighting over one cache line, a cost of the microarchitecture that
    [ch12](#cache-coherence) measures.
 3. **Lower the increments to a thousand.** The loss may vanish. A thousand increments take so
    little time that the second worker has often not started when the first has finished. Nothing
@@ -123,12 +123,12 @@ Where the window is depends on the target. Pick one:
 ::::
 
 On **AArch64** and **RISC-V** the window is between two instructions, the load and the store, and
-another core can run anything it likes in it. On **WebAssembly** the window is between
-`i32.load` and `i32.store`, and the browser's engine turns those into the host's own load and
-store, so the window is the host's. On **x86-64** the window is inside one instruction. A
-memory-destination `inc` is read, add, write in the processor, and without the `lock` prefix the
-read and the write are two separate accesses to the cache; another core's write may land between
-them. The instruction count was never the point. The two accesses are.
+another core can run anything it likes in it. On **WebAssembly** the window is between `i32.load`
+and `i32.store`, and whatever host instructions the engine emits for them, two accesses stay two,
+so the window is the host's. On **x86-64** the window is inside one instruction. A
+memory-destination `inc` performs a read of the word and a separate write of it. Without the `lock`
+prefix the instruction set does not promise that nothing lands between the two, so another core's
+write may. The instruction count was never the point. The two accesses are.
 
 The kernel's loop, in WebAssembly, shows the barrier every worker sleeps on and the call it then
 makes a million times. `memory.atomic.wait32` puts the worker to sleep until the page writes the
@@ -166,9 +166,9 @@ schedule:
 
 One interleaving, and a whole thread's work is gone at once. The window is the same width in
 operations, three steps, and a thousand times wider in consequence. The live run with *folded*
-rarely shows it, because the window is open for one instruction per worker and a million times
-shorter than before; but it can, and it does on a machine with enough cores and enough runs. A
-race that rarely fires is still a race.
+rarely shows it, because each worker opens the window once instead of a million times; but it can,
+and it does on a machine with enough cores and enough runs. A race that rarely fires is still a
+race.
 
 ## The mental model
 

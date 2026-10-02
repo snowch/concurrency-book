@@ -59,7 +59,8 @@ Try these, in order:
    exactly once or is still in the stack, and the two numbers add up to the pushes. Four workers
    pushed and popped at once with no lock, and nothing was lost.
 2. **Add workers, and run again.** Still exact. More workers mean more failed compare-and-swaps,
-   as in ch04, and a failed swing is a retry, never a loss.
+   which ch04's panel counted and this one does not, and a failed swing is a retry, never a
+   loss.
 3. **Open the deterministic trace.** Two threads pop from a stack of three nodes. Under
    *alternate*, both read node one as the top, both read node two below it, the first
    compare-and-swap succeeds, the second fails and retries, and the two threads leave with
@@ -75,15 +76,16 @@ conditional on the top being the one the reads described. The trace shows the re
 ```{include} _generated/stack-trace-cas.md
 ```
 
-Thread B's compare-and-swap at step six fails because A has already swung the head to node
-two. B reads again, finds two on top and three below, and succeeds. The structure was never
-inconsistent at any step, because the only write to it is the swing, and the swing happens only
-if the structure is as the writer last saw it.
+Thread B's compare-and-swap at step six fails because A has already swung the head to node two. B
+reads again, finds two on top and three below, and succeeds. The structure was never inconsistent
+at any step, because the only write to it is the swing, and the swing happens only if the head is
+as the writer last saw it, which in this kernel means the structure is too, because no popped node
+is pushed again.
 
-That is the whole discipline of a lock-free structure: every mutation is one compare-and-swap on
-one word, whose expected value encodes everything the mutation assumed. Here the assumption is
-"the top is still this node", which is enough as long as a node that was popped is never pushed
-again. [ch17](#the-aba-problem) breaks exactly that assumption.
+That is the discipline of this stack, and the simplest a lock-free structure can have: every
+mutation is one compare-and-swap on one word, whose expected value encodes everything the mutation
+assumed. Here the assumption is "the top is still this node", which is enough as long as a node
+that was popped is never pushed again. [ch17](#the-aba-problem) breaks exactly that assumption.
 
 ## At the machine
 
@@ -117,12 +119,13 @@ The pop:
 :::
 ::::
 
-The shape is ch04's with one more load: the top, then the node's `next` at an address computed
-from the top, then the compare-and-swap. On **x86-64** that is a `mov`, a `mov` from an indexed
-address, and `lock cmpxchg`. On **AArch64** the acquire loads are `ldar` and the compare-and-swap
-is the exclusive pair or, with **LSE**, `casa`, compare-and-swap with acquire. **RISC-V** uses
-the reserved and conditional pair with the acquire fence. **WebAssembly** uses
-`i32.atomic.load` and `i32.atomic.rmw.cmpxchg`, with the index arithmetic in between.
+The shape is ch04's with one more load: the top, then the node's `next` at an address computed from
+the top, then the compare-and-swap. On **x86-64** that is a `mov`, a `mov` from an indexed address,
+and `lock cmpxchg`. On **AArch64** the head's acquire load is `ldar`, the relaxed load of `next` a
+plain `ldr`, and the compare-and-swap the exclusive pair `ldaxr` and `stxr` or, with **LSE**,
+`casa`, compare-and-swap with acquire. **RISC-V** uses the reserved and conditional pair with the
+acquire fence. **WebAssembly** uses `i32.atomic.load` and `i32.atomic.rmw.cmpxchg`, with the index
+arithmetic in between.
 
 The push, in the same shape with the store of `next` before the swing:
 
@@ -151,12 +154,12 @@ The push, in the same shape with the store of `next` before the swing:
 
 ## Fix one thing
 
-Nothing is broken, so the thing to notice is what the fix of ch04 bought here. A locked stack
-would need the lock's acquire, the two reads, the write and the release, with every other
-thread waiting through all of it. The lock-free pop is two reads and one compare-and-swap, and a
-thread that is descheduled between them holds nothing: the others proceed, and when it wakes its
-compare-and-swap fails and it reads again. That is the progress guarantee, and it is the reason
-to accept the discipline.
+Nothing is broken, so the thing to notice is what the fix of ch04 bought here. A locked stack would
+need the lock's acquire, the two reads, the write and the release, with every other thread waiting
+through all of it. The lock-free pop is two reads and one compare-and-swap, and a thread that is
+descheduled between them holds nothing: the others proceed, and when it wakes its compare-and-swap
+fails if the head has moved, and it reads again. That is the progress guarantee, and it is the
+reason to accept the discipline.
 
 ## Break it again
 
@@ -169,7 +172,8 @@ below as the new head, in two steps instead of one:
 :end-before: /* a: nodes per worker
 ```
 
-This panel is locked to it. Run it: *Popped twice* and *Lost* are not zero.
+This panel is locked to it. Run it: on a device with more than one core, *Popped twice* and *Lost*
+are not zero in most runs; on one core, the trace below is the instrument.
 
 ```lab
 experiment: stack
@@ -183,19 +187,20 @@ The trace, under *alternate*:
 ```{include} _generated/stack-trace-broken.md
 ```
 
-Both threads read node one as the top, both store node two as the head, and both leave holding
-node one. One node, two owners, and node two is still the head though it was "popped" by
-nobody. In the live run that shows as nodes popped twice, and as nodes lost, because a thread
-that popped node one and later pushed it back may do so while the other owner is pushing it
-too, which links a node to itself. It is [ch03](#atomic-operations)'s split increment, in a
-structure: each step atomic, the pair not.
+Both threads read node one as the top, both store node two as the head, and both leave holding node
+one. One node, two owners, and node two is still the head though it was "popped" by nobody. In the
+live run that shows as nodes popped twice, and as nodes lost: a push that swung the head between a
+pop's read and its plain store is undone by that store, and the pushed node, with everything pushed
+above it since, is unreachable from the head. No node here is ever pushed back; a push and a broken
+pop need only overlap. It is [ch03](#atomic-operations)'s split increment, in a structure: each
+step atomic, the pair not.
 
 ## The mental model
 
 :::{div}
 :class: model
 
-**A lock-free structure changes by one compare-and-swap per mutation.** The expected value encodes
+**The simplest lock-free structure changes by one compare-and-swap per mutation.** The expected value encodes
 what the mutation assumed. If the assumption no longer holds, the swap fails and the thread
 reads again.
 

@@ -279,7 +279,7 @@ _CHAPTERS = (
         "Which reorderings does each architecture allow, and what does the same C become on each?",
         "The orderings of x86-64, AArch64 and RISC-V side by side, with the instructions each "
         "needs for the same source.",
-        ("store_buffer",),
+        ("store_buffer", "publication"),
     ),
     (
         "lock_free_stack",

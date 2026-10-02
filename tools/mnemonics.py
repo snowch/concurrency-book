@@ -31,6 +31,7 @@ KINDS = {
     "load": "A load: the read half of a read-modify-write, and the moment this thread's view of the word is taken.",
     "store": "A store: the write another thread may see, before or after its own, with nothing to say which.",
     "rmw": "An atomic read-modify-write: one step that no other core's access can get between.",
+    "memrmw": "A read-modify-write on memory in one instruction: still a read and a separate write, atomic only with a lock prefix.",
     "exclusive": "Half of a load-exclusive, store-exclusive pair: the retry loop that stands in for an atomic read-modify-write.",
     "fence": "A fence: stops the processor reordering the memory accesses on either side of it.",
     "prefix": "A prefix that makes the instruction after it atomic.",
@@ -67,12 +68,12 @@ X86_64 = {
         "The compare-and-swap of ch04, and the foundation of every lock-free structure in Part V.",
     ),
     "dec": (
-        "rmw",
+        "memrmw",
         "Subtracts one from the operand, which may be in memory.",
         "A read-modify-write on memory in one instruction; without a lock prefix, still a read and a separate write.",
     ),
     "inc": (
-        "rmw",
+        "memrmw",
         "Adds one to the operand, which may be in memory.",
         "A read-modify-write on memory in one instruction; without a lock prefix, still a read and a separate write, which ch02 loses updates inside.",
     ),
@@ -104,7 +105,7 @@ X86_64 = {
     "mfence": (
         "fence",
         "A fence: every earlier load and store of this thread completes before any later one.",
-        "The fence of ch11: the only way on x86-64 to stop a store waiting in the store buffer while a later load runs.",
+        "The fence of ch11: with a locked instruction, one of the two ways on x86-64 to stop a store waiting in the store buffer while a later load runs.",
     ),
     "mov": (
         "move",
@@ -216,7 +217,7 @@ AARCH64 = {
     "dmb": (
         "fence",
         "A data memory barrier: the accesses before it are ordered before the accesses after it, for the domain and kind named.",
-        "The fence of ch11 on AArch64; `dmb ish` is the full one a sequentially consistent store needs.",
+        "The fence of ch11 on AArch64; `dmb ish` is the full one, and what a sequentially consistent fence becomes.",
     ),
     "ldadd": (
         "rmw",
@@ -432,7 +433,7 @@ WASM = {
     "i32.atomic.rmw.add": (
         "rmw",
         "Atomically adds to a 32-bit word in memory and pushes the old value.",
-        "ch03's atomic increment, which the engine lowers to the host's own atomic add.",
+        "ch03's atomic increment, which the engine lowers to an atomic read-modify-write of its own choosing on the host.",
     ),
     "i32.atomic.rmw.cmpxchg": (
         "rmw",

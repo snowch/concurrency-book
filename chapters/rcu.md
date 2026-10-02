@@ -54,14 +54,14 @@ grace: reuses at once
 
 Try these, in order:
 
-1. **Run it.** With reuse at once, *Poisoned reads* is not zero, as in ch18: the writer reused a
+1. **Run it.** With reuse at once, *Poisoned reads* is not zero, as in ch18, on a device with more than one core; the count is one observation: the writer reused a
    record a reader was reading.
 2. **Switch the writer to *waits for a grace period*.** Zero poisoned reads, and *Grace-period
-   waits* is large. Compare the read counts: the readers made about as many reads as before,
-   because their path did not change. The writer made the same number of updates and spent far
-   longer making them.
+   waits* is large. Compare *Reads* with *Elapsed*: the readers read for as long as the writer ran, at the
+   rate they had before, because their path did not change. The writer made the same number of
+   updates and spent far longer making them.
 3. **Add readers.** The writer's waits grow with the number of readers, since the grace period
-   ends only when the last of them has passed a quiescent state. The readers do not slow down.
+   ends only when the last of them has passed a quiescent state. The readers' path is unchanged; their rate is not measured here.
 4. **Open the deterministic trace.** The reader notes the epoch, follows the pointer, and reads.
    The writer publishes record two, moves the epoch to one, and spins until the reader's note
    says one, which it does only after the reader has finished. Only then does the writer poison
@@ -79,10 +79,11 @@ only that the reader has moved on.
 ```{include} _generated/rcu-trace-grace.md
 ```
 
-Three things make it cheap for readers. The read path has no store, so no cache line moves. The
-note is a store to a word only the writer reads, so its line stays in the reader's cache except
-when the writer looks. And the note needs no second load of the pointer, because the reader is
-not protecting a record; it is reporting a time.
+Three things make it cheap for readers. The read path has no store, so a reader invalidates no line
+in any other cache; the lines it reads it shares. The note is a store to a word only the writer
+reads, so its line moves only when the writer looks, and when a neighbouring reader's note shares
+the line, as this kernel's do. And the note needs no second load of the pointer, because the reader
+is not protecting a record; it is reporting a time.
 
 Two things make it expensive for the writer. It waits for the slowest reader, and a reader that
 is asleep, or descheduled, or in a long read, holds every retirement back. And the memory
@@ -166,10 +167,11 @@ that waits a few milliseconds costs nothing anyone notices.
 
 ## Break it again
 
-Move the reader's note inside the read, between the pointer and the record. The writer can now
-see the new epoch noted while the reader is still between the two loads, end the grace period,
-and poison the record the reader is about to read. The trace, with the schedule set to *manual*,
-shows it: the note must be outside the read, or it says nothing. The rule is the one every
+Move the reader's note inside the read, between the pointer and the record. The writer can now see
+the new epoch noted while the reader is still between the two loads, end the grace period, and
+poison the record the reader is about to read. No panel here moves the note; the trace's reader
+keeps it between reads. Move it in the model and the writer's wait ends while the reader is between
+its two loads: the note must be outside the read, or it says nothing. The rule is the one every
 quiescent-state scheme rests on: a quiescent state is a point where a thread holds no reference,
 and reporting one from anywhere else is a lie the writer will act on.
 
@@ -187,12 +189,13 @@ state since the publish, which means every read that could see the old record ha
 
 **A quiescent state is a point where a reader holds nothing.** Reported from anywhere else, it
 is false, and the writer frees what the reader holds.
+
+**Removing the lock cost three things it had bundled.** Ordering, which the queue rebuilt; identity, which the ABA problem exposed; and lifetime, which reclamation and the grace period restore. Each came back as a protocol.
 :::
 
 ## What this cannot tell you
 
-**How a kernel implements it.** The Linux kernel's RCU has readers that cost nothing at all on
-the read path, with quiescent states inferred from context switches and timer ticks, and grace
+**How a kernel implements it.** The Linux kernel's RCU has readers that, in its non-preemptible form, cost nothing on the read path, with quiescent states inferred from context switches and timer ticks, and grace
 periods tracked by a tree of counters across hundreds of cores. The kernel here is the idea;
 the implementation is a field of its own.
 

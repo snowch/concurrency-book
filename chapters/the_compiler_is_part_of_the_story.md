@@ -65,10 +65,9 @@ autorun: false
 
 Try these, in order:
 
-1. **Run it with the plain flag.** The run does not finish. The setter sets the flag within a
-   millisecond or so; the waiter never notices. After four seconds the page stops the workers
+1. **Run it with the plain flag.** The run does not finish. The setter sets the flag after its busy work, which *Elapsed* on a volatile run measures; the waiter never notices. After four seconds the page stops the workers
    and says so. Nothing about the processor is to blame: *At the machine* shows that the loop
-   the compiler emitted reads the flag once, before the loop, and then tests a register forever.
+   the compiler emitted reads the flag once, before the loop, and if it read zero branches to itself forever.
 2. **Set the busy steps to zero and run again.** Still no end. Even a flag that is set before the
    waiter starts looping does not help if the waiter's one read happened first, and the barrier
    makes the two workers start together, so it usually does.
@@ -186,20 +185,23 @@ which is a choice, not a meaning. Only WebAssembly distinguishes them in the ins
 `i32.load` for the volatile flag, `i32.atomic.load` for the atomic one, because WebAssembly's
 atomic loads carry an ordering the plain ones do not.
 
-So on the processor the two loops are the same, and the difference between `volatile` and
-`_Atomic` is entirely in what the compiler promised. For this loop, which reads one word and
-nothing else, the promises coincide. The moment the waiter reads a second variable after the
-flag, they part: the atomic load can order that second read after the flag; the volatile load
-cannot, and the compiler, or the processor, may move the second read above it. That is
+So on three of the four targets the two loops are the same instructions, and the difference between
+`volatile` and `_Atomic` is in what the language promised and the compiler must keep. For this
+loop, which reads one word and nothing else, the promises coincide. The moment the waiter reads a
+second variable after the flag, they part: an atomic load with acquire ordering, which
+[ch08](#acquire-and-release) asks for, orders that second read after the flag; neither a volatile
+load nor this relaxed one does, and the compiler, or the processor, may move the second read above
+it, and the compiler, or the processor, may move the second read above it. That is
 [ch08](#acquire-and-release).
 
 ## Fix one thing
 
 The fix is the atomic flag, and the smallest fix is `memory_order_relaxed`, which is what the
-kernel asks for and all this loop needs: a read every time round, and nothing about order. You
-ran it above. Volatile would also have ended the loop, and it is the wrong fix, because it fixes
-this symptom and not the disease. A program that uses volatile for a flag will work until it
-reads a second variable, and then fail on a processor that reorders loads, in a way that no test
+kernel asks for and all this loop needs: a read every time round, and nothing about order. You ran
+it above. Volatile would also have ended the loop, and it is the wrong fix, because it fixes this
+symptom and not the disease. A program that uses volatile for a flag will work until it reads a
+second variable, and then it can fail twice over: the compiler may move the second read above the
+volatile one on any target, and a processor that reorders loads may do the same, in a way no test
 on x86-64 will find.
 
 ## Break it again
@@ -252,7 +254,7 @@ registers.
 **`_Atomic` means "another thread may touch this".** Every access is an access, and the orderings
 of Part III can be asked for.
 
-**For a single flag the two produce the same instructions. The difference is the promise, and the
+**For a single relaxed flag the two produce the same instructions on three of the four targets. The difference is the promise, and the
 promise is what breaks first when the program grows.**
 :::
 

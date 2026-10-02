@@ -9,14 +9,15 @@ title: Lock-free queue
 
 How do many producers and many consumers share one queue without a lock?
 
-A stack has one end, and [ch16](#lock-free-stack) kept it consistent with one compare-and-swap
-on one word. A queue has two ends, a producer's and a consumer's, and an item must travel from
-one to the other through memory both sides touch. The structure most programs want is a bounded
-ring: a fixed array of slots, a tail the producers advance, a head the consumers advance. This
-chapter builds it in three steps, running each, so that the design that works is the answer to
-two designs that do not. The checks are the chapter's instrument: every item names its producer
-and its number, so a consumer can tell when an item is missing, arrives twice, or arrives before
-an earlier one from the same producer.
+A stack has one end, and [ch16](#lock-free-stack) kept it consistent with one compare-and-swap on
+one word. A queue has two ends, a producer's and a consumer's, and an item must travel from one to
+the other through memory both sides touch. With a lock, claiming a position and filling its slot
+are one critical section; without one they come apart, and that gap is this chapter's problem. The
+structure most programs want is a bounded ring: a fixed array of slots, a tail the producers
+advance, a head the consumers advance. This chapter builds it in three steps, running each, so that
+the design that works is the answer to two designs that do not. The checks are the chapter's
+instrument: every item names its producer and its number, so a consumer can tell when an item is
+missing, arrives twice, or arrives before an earlier one from the same producer.
 
 ## The smallest program
 
@@ -62,7 +63,7 @@ step: one-to-one ring
 
 Try these, in order:
 
-1. **Run it.** The one-to-one ring, used by two of each, loses most of its items: *Dequeued* is
+1. **Run it.** On a device with more than one core, the one-to-one ring used by two of each loses items: *Dequeued* is
    far below *Enqueued*, *Unwritten slots* is large, and some items arrive out of order. Two
    producers both read the tail, both write the same slot, both store the same new tail: one
    item is overwritten and the tail advances once for two writes. The consumers do the same at
@@ -128,10 +129,13 @@ The sequenced enqueue:
 Find the three parts: the acquire load of the slot's sequence (`ldar` on AArch64), the
 compare-and-swap on the tail (`lock cmpxchg`, the exclusive pair, `lr.w` and `sc.w`,
 `i32.atomic.rmw.cmpxchg`), and the release store of the new sequence (`stlr`, or `fence rw, w`
-before the store). The item's own store is a plain one between the claim and the release, which
+before the store). The item's own store is relaxed in the C, which the three native targets emit as
+a plain store and WebAssembly as `i32.atomic.store`, since its atomics have one ordering; relaxed
 is all it needs to be.
 
-The one-to-one ring's enqueue and dequeue, for comparison, have no compare-and-swap at all:
+The one-to-one ring's enqueue and dequeue, for comparison, have no compare-and-swap at all. The
+exchange in the dequeue empties the slot so the page can tell an unwritten slot from a written one;
+a real one-to-one ring would load it:
 
 ::::{tab-set}
 :::{tab-item} x86-64
@@ -157,8 +161,9 @@ The one-to-one ring's enqueue and dequeue, for comparison, have no compare-and-s
 ::::
 
 The whole difference between a queue for one of each and one for many of each is the
-compare-and-swap on the index and the sequence in the slot. The one-to-one ring is the fastest
-queue there is, and the right one when its assumption holds.
+compare-and-swap on the index and the sequence in the slot. The one-to-one ring is the cheapest of
+the three, with no compare-and-swap, no sequence number, and one release and one acquire per item,
+and the right one when its assumption holds.
 
 ## Fix one thing
 
@@ -190,12 +195,14 @@ shape of [ch17](#the-aba-problem).
 :::{div}
 :class: model
 
-**A queue is two handovers.** Producers hand positions to each other through the tail;
+**A queue is three handovers.** Producers hand positions to each other through the tail;
 consumers through the head. Each is a compare-and-swap. The item crosses from producer to
 consumer through the slot, and that handover needs its own flag: the sequence number.
 
 **A claim is not a write.** Owning position `t` is not the same as having written slot `t`. The
 slot must say when it is ready, with a release, and be read with an acquire.
+
+**A claim is a small lock.** A producer that stops between its claim and its release store holds position `t`, and the consumer of `t` waits for it. This ring has no lock, which is the title's sense, but it is not lock-free in ch16's sense.
 
 **One of each needs none of this.** A single producer and a single consumer need only the
 release and acquire on the two indices.
@@ -220,4 +227,5 @@ The kernel drops after a long wait, for the page's sake.
   Non-Blocking and Blocking Concurrent Queue Algorithms*, PODC 1996.
 - **The single-producer ring.** Leslie Lamport, *Proving the Correctness of Multiprocess
   Programs*, IEEE TSE 1977, where the one-to-one ring is proved correct.
-- **Next.** [ch20](#rcu) lets readers never wait at all.
+- **Next.** Even the sequenced ring makes a consumer wait for the producer of its position.
+  [ch20](#rcu) asks for readers that wait for nothing, and sends every wait to the writer.

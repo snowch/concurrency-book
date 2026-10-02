@@ -29,8 +29,8 @@ Used by [ch01](#what-x-plus-plus-does), [ch02](#two-threads-one-variable),
 
 | | |
 |---|---|
-| Controls | workers; increments per worker; operation (plain or atomic) |
-| Arguments | `a` increments per worker; `b` 1 for the atomic increment, 0 for the plain one |
+| Controls | workers; increments per worker; operation (plain, atomic, split or folded) |
+| Arguments | `a` increments per worker; `b` 0 plain, 1 atomic, 2 the loop the compiler sees whole, 3 an atomic load then an atomic store |
 | Results | result 0 is the plain counter, result 1 the atomic counter |
 | Modes | live, trace, at a desk |
 

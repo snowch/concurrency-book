@@ -54,15 +54,15 @@ The kernels are short and use a small part of C. Everything in this table appear
 | `int *p = &counter;` | `&counter` is the address of `counter`; `p` is a pointer, a variable holding that address. | C |
 | `*p = 5;` | A store through the pointer: the variable `p` points at becomes five. | C |
 | `void f(int *p)` | A function that receives a pointer, so it can read and write the caller's variable. | C |
-| `static int seen;` | A variable or function visible only inside its file. The kernels mark nearly everything static. | C |
+| `static int seen;` | A variable or function visible only inside its file. The kernels mark their helpers static and leave the shared variables and the quoted functions visible, so that the fragments can name them. | C |
 | `const int n` | A value the function promises not to change. | C |
 | `struct node { int value; struct node *next; };` | A record with named fields. A pointer to one is how the structures of Part V link their nodes. | C |
 | `uint32_t`, `int64_t` | Integers of a stated width, from `<stdint.h>`, so a word means the same on every target. | Library |
 | `#include <stdatomic.h>` | The declarations of C's atomic operations. | Library |
 | `_Atomic int counter;` | An atomic integer: every access to it is indivisible. What that buys, and what it does not, is [ch03](#atomic-operations). | C |
 | `atomic_fetch_add_explicit(&counter, 1, memory_order_relaxed)` | Adds to an atomic variable as one indivisible step and returns the old value. The last argument names an ordering; [Part III](#part-memory-ordering) explains the orderings, and until then read it as "the weakest". | Library |
-| `volatile int flag;` | Tells the compiler that every access to `flag` must happen as written. It does not make accesses indivisible and does not order them against anything; [ch07](#the-compiler-is-part-of-the-story) shows what it is for and [ch08](#acquire-and-release) what it is not. | C |
-| `#ifdef __wasm__` ... `#else` ... `#endif` | Conditional compilation: the lines between are compiled only when building for WebAssembly. The kernels use it to wait and wake in the way each platform offers. | Compiler |
+| `volatile int flag;` | Tells the compiler that every access to `flag` must happen as written. It does not make accesses indivisible, keeps them in order only with other volatile accesses in the same thread, and promises nothing about what another thread sees; [ch07](#the-compiler-is-part-of-the-story) shows what it is for and [ch08](#acquire-and-release) what it is not. | C |
+| `#ifdef __wasm__` ... `#else` ... `#endif` | Conditional compilation: the lines between are compiled only when building for WebAssembly. The kernels use it to wait and wake in the way each platform offers; the name it tests is defined by the compiler. | C |
 | `CM_EXPORT("cm_run")`, `CM_NOINLINE` | Macros from the book's own header, `experiments/cm.h`. The first makes a function callable from the page; the second keeps it out of line. Neither is C or concurrency. | Compiler |
 | `(void)tid;` | Marks an argument as deliberately unused, so the compiler does not warn about it. | C |
 

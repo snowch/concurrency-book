@@ -43,15 +43,16 @@ Try these, in order:
 
 1. **Run it, and note what your device is.** The foot of the panel says how many cores; it cannot
    say which architecture, so you have to. On x86-64, *volatile* shows *both loaded zero* and
-   nothing else surprising. On AArch64 the same run shows it, and the distribution of the other
-   three outcomes shifts, because loads and stores may each pass their own kind.
+   nothing else surprising. On AArch64 the same run shows it too;
+   reordering a load past a load, or a store past a store, needs a program with two of a kind,
+   which this test is not.
 2. **Switch the ordering to *release-acquire*.** On every device in this browser, zero: the
    WebAssembly atomics are strong. Natively the result differs by architecture, and the fragments
    below say how: on x86-64 the outcome returns, because release-acquire is the plain pair; on
    AArch64 it does not, because `stlr` followed by `ldar` happens to be ordered.
-3. **Open the deterministic trace.** The model has one reordering, the store buffer's, which is
-   x86-64's. It is a model of x86-64, and the chapter says so: AArch64 and RISC-V allow more than
-   the model shows.
+3. **Open the deterministic trace.** In this test the model has one reordering, the store
+   buffer's, which is the one x86-64 allows. In ch08 the same buffer drained out of order, which
+   x86-64 never does and AArch64 and RISC-V may; the model shows no more than that.
 
 ## What the source hides
 
@@ -65,20 +66,21 @@ targets and WebAssembly, for two accesses to different addresses with nothing or
 | A load overtaken by a later load | never | allowed | allowed | plain: the host's; atomics: never |
 | A load overtaken by a later store | never | allowed | allowed | plain: the host's; atomics: never |
 
-x86-64 is *total store order*: stores reach memory in program order, loads are performed in
-program order, and only the store buffer breaks the symmetry. AArch64 and RISC-V are *weakly
-ordered*: any two accesses to different addresses may be reordered unless an instruction says
-otherwise, and the instructions that say otherwise are the ones the fragments have been
-showing. WebAssembly's position is the one this book has repeated since [ch03](#atomic-operations):
-its atomics are sequentially consistent and reorder nothing; its plain accesses inherit whatever
-the host does. A WebAssembly program is weakly ordered on a phone and strongly ordered on a
-laptop, and a program that is only correct on the laptop has a bug the laptop cannot show.
+x86-64 is *total store order*: stores reach memory in program order, loads are performed in program
+order, and only the store buffer breaks the symmetry. AArch64 and RISC-V are *weakly ordered*: any
+two accesses to different addresses may be reordered unless an instruction says otherwise, and the
+instructions that say otherwise are the ones the fragments have been showing. WebAssembly's
+position is the one this book has repeated since [ch03](#atomic-operations): its atomics are
+sequentially consistent and reorder nothing; its plain accesses inherit whatever the engine and
+then the host do with them. A WebAssembly program is weakly ordered on an Arm device and strongly
+ordered on an x86-64 one, and a program that is only correct on the laptop has a bug the laptop
+cannot show.
 
-Two consequences for the handover of ch08. On x86-64, a relaxed flag publishes its data
-correctly by accident, because stores stay in order and loads stay in order. On AArch64 it does
-not: the data's store may be overtaken by the flag's, or the data's load may run before the
-flag's. The correct program, with release and acquire, runs on both; the incorrect one runs on
-one.
+Two consequences for the handover of ch08. On x86-64, a relaxed flag publishes its data correctly
+by accident: the compiler happened to keep the stores in order, and the architecture then keeps
+them in order too. Neither was promised. On AArch64 it does not: the data's store may be overtaken
+by the flag's, or the data's load may run before the flag's. The correct program, with release and
+acquire, runs on both; the incorrect one runs on one.
 
 ## At the machine
 
@@ -158,19 +160,18 @@ x86-64's model, with relaxed where release was needed, is free on x86-64 and wro
 This panel is the handover with release and acquire, which is correct on every target:
 
 ```lab
-experiment: store_buffer
-workers: 2
-lock: workers, ordering
-ordering: seq_cst
+experiment: publication
+ordering: release-acquire
+lock: ordering
 ```
 
 ## Break it again
 
-The way to break a correct program is to port it to a stronger machine and then optimise it
-there. Replace a release with relaxed because the x86-64 fragment showed they were the same
-instruction. They were. The AArch64 fragment shows they are not, and the program now publishes
-stale data on every phone it runs on. Every removal of an ordering must be justified by the
-language's rules, which hold on every target, and never by a fragment, which holds on one.
+The way to break a correct program is to port it to a stronger machine and then optimise it there.
+Replace a release with relaxed because the x86-64 fragment showed they were the same instruction.
+They were. The AArch64 fragment shows they are not, and the program may now publish stale data on
+any Arm device it runs on. Every removal of an ordering must be justified by the language's rules,
+which hold on every target, and never by a fragment, which holds on one.
 
 ## The mental model
 
@@ -199,8 +200,7 @@ AArch64's on AArch64, and nothing about either on the other.
 Dependencies, multi-copy atomicity, and the exact rules for mixed-size accesses are in the
 architecture manuals and the formal models cited below.
 
-**RISC-V's real hardware.** RVWMO is the specification; a given core may be stronger. The
-fragments show what the specification requires the compiler to emit.
+**RISC-V's real hardware.** RVWMO is the specification; a given core may be stronger. The fragments show the mapping clang 18 chose, one of several the specification allows.
 
 ## Where to go next
 

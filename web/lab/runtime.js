@@ -98,7 +98,8 @@ export class Runtime {
       }
       await Promise.all(ready);
       onStatus("running");
-      // Every worker is inside cm_run, asleep on the barrier. Open it, and time until the last
+      // Every worker has said it is about to call cm_run, whose first act is to sleep on the
+      // barrier; a late one finds it open. Open it, and time until the last
       // one reports back; the report crosses a message port, so this includes a little of the
       // page's own latency, which the chapter says.
       const t0 = performance.now();

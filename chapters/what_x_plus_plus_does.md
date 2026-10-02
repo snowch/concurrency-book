@@ -77,9 +77,9 @@ Try these, in order:
 
 ## What the source hides
 
-`counter++` is a read-modify-write. The processor holds values in registers, and arithmetic
-happens there, so an increment of a variable in memory is three steps: fetch the value into a
-register, add one to the register, write the register back. In the trace's notation:
+`counter++` is a read-modify-write. Whatever the instruction count, an increment of a variable in
+memory is a read of the word, an addition, and a write of the result, and the read and the write
+are two separate memory accesses. In the trace's notation:
 
 ```text
 r = load counter
@@ -88,11 +88,11 @@ store counter = r
 ```
 
 The C standard says the same thing in its own words. The increment reads the stored value and
-writes the new one, and a program that lets another thread write the variable in between has a
-data race, which the standard declines to give any meaning at all. One thread cannot race with
-itself, so for now the three steps are only a fact about the shape of the operation. Hold on to
-the shape: the window between the load and the store is where [ch02](#two-threads-one-variable)
-puts a second thread.
+writes the new one, and a program in which another thread writes the variable with nothing to order
+the two accesses has a data race, which the standard declines to give any meaning at all. One
+thread cannot race with itself, so for now the three steps are only a fact about the shape of the
+operation. Hold on to the shape: the window between the load and the store is where
+[ch02](#two-threads-one-variable) puts a second thread.
 
 ## At the machine
 
@@ -132,9 +132,7 @@ address of the variable, pushed where the load and the store need it.
 
 **x86-64 is the one that lies to you.** The compiler chose `inc dword ptr [rip + counter]`: one
 instruction that increments a word in memory in place. The source became one instruction, so it
-is tempting to conclude that the increment is one step. It is not. The processor still fetches
-the word, adds one to it and writes it back; the instruction set hides the three steps inside
-one encoding. Nothing about it is indivisible with respect to another core. [ch03](#atomic-operations)
+is tempting to conclude that the increment is one step. It is not. Its architectural effect is still a read of the word and a write of the result: two memory accesses in one encoding. Without the `lock` prefix the instruction set does not make them one indivisible access, so another core's access may land between them. [ch03](#atomic-operations)
 shows the one-byte prefix that makes it so, and the trace in [ch02](#two-threads-one-variable)
 loses an update inside exactly this instruction.
 
@@ -179,14 +177,14 @@ the loop inside the function, where the compiler can see all of it:
 :::
 ::::
 
-The loop is gone. The compiler proved that running the increment `n` times has the same effect,
-for one thread, as adding `n` once, and emitted one load, one add of `n` and one store. On x86-64
-it is one `add` with the count in a register. That is what *folded* ran in the panel above, and
-why it took no measurable time. The compiler is allowed to do this because the language told it
-nothing about other threads: a variable that is not atomic is, as far as the compiler is
-concerned, this thread's alone. [ch07](#the-compiler-is-part-of-the-story) is about the
-consequences. The fix, for a kernel that must do what it says, is the out-of-line call: the
-compiler cannot see through it, so the loop stays a loop.
+The loop is gone. The compiler proved that running the increment `n` times has the same effect, for
+one thread, as adding `n` once, and emitted one load, one add of `n` and one store. On x86-64 it is
+one `add` with the count in a register. That is what *folded* ran in the panel above, and why its
+*Elapsed* collapsed in your run. The compiler is allowed to do this because the language told it
+nothing about other threads: a variable that is not atomic is, as far as the compiler is concerned,
+this thread's alone. [ch07](#the-compiler-is-part-of-the-story) is about the consequences. The fix,
+for a kernel that must do what it says, is the out-of-line call: the compiler cannot see through
+it, so the loop stays a loop.
 
 ## Break it again
 
@@ -216,11 +214,11 @@ Take the optimiser away instead. The same `increment`, compiled at optimisation 
 ::::
 
 Now x86-64 shows its three steps too: a `mov` from memory into a register, an `add` on the
-register, a `mov` back, wrapped in the stack frame an unoptimised function keeps. The behaviour
-is the same as the one-instruction version in every way the reader of the program can see, and
-in one way they cannot: the window between the load and the store is now three instructions wide
-instead of being inside one. The processor was always doing three things. Only the encoding
-changed.
+register, a `mov` back, wrapped in the stack frame an unoptimised function keeps. The behaviour is
+the same as the one-instruction version in every way the reader of the program can see, and in one
+way they cannot: the window between the load and the store is now three instructions wide instead
+of being inside one. The instruction set always defined a read and a separate write. Only the
+encoding changed.
 
 ## The mental model
 
@@ -228,9 +226,8 @@ changed.
 :class: model
 
 **An increment is a load, an add and a store.** The source shows one operation; the language
-defines three; the processor performs three, whatever the instruction count. On AArch64 and
-RISC-V the three are three instructions. On x86-64 the compiler usually folds them into one
-instruction that is still three steps inside. The window between the load and the store is where
+defines three; and on every target the read and the write are two memory accesses, whatever the instruction count. On AArch64 and
+RISC-V the three are three instructions. On x86-64 the compiler usually folds them into one instruction whose read and write are still two accesses. The window between the load and the store is where
 every race in Part I happens.
 
 **The compiler keeps the meaning for one thread and promises nothing to a second.** A loop of

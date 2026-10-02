@@ -185,7 +185,9 @@ export function aba({ variant = "plain" } = {}) {
     ? [
       { op: "load", reg: "top", var: "head" }, { op: "load", reg: "tag", var: "tag" },
       { op: "loadi", reg: "below", base: "next", index: "top" },
-      { op: "cas2", vars: ["head", "tag"], expect: ["top", "tag"], values: ["below", 9], out: "ok" },
+      // The swing moves the tag on by one, as every swing does; the compare is on both halves.
+      { op: "add", reg: "newtag", from: "tag", imm: 1 },
+      { op: "cas2", vars: ["head", "tag"], expect: ["top", "tag"], values: ["below", "newtag"], out: "ok" },
       { op: "jz", reg: "ok", to: 0 }, { op: "store", var: "gotA", reg: "top" },
     ]
     : [
