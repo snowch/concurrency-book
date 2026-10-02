@@ -19,6 +19,7 @@ from tools.outline import (
     CHAPTER_SHAPE,
     CHAPTERS,
     EXPERIMENTS,
+    FRONT,
     OPTIONAL_HEADINGS,
     PARTS,
     UNWRITTEN,
@@ -28,6 +29,7 @@ from tools.render import LabBlockError, parse_lab_block
 ROOT = Path(__file__).resolve().parent.parent
 BOOK_PAGES = sorted(
     [ROOT / "cover.md", ROOT / "index.md"]
+    + [ROOT / f.path for f in FRONT]
     + list((ROOT / "parts").glob("*.md"))
     + list((ROOT / "chapters").glob("*.md"))
     + list((ROOT / "appendices").glob("*.md"))
@@ -67,7 +69,7 @@ def test_the_table_of_contents_is_the_outline():
         if "file" in entry:
             files.append(entry["file"])
         files += [c["file"] for c in entry.get("children", [])]
-    expected = ["cover.md", "index.md"]
+    expected = ["cover.md", "index.md"] + [f.path for f in FRONT]
     for part in PARTS:
         expected.append(part.path)
         expected += [c.path for c in CHAPTERS if c.part == part.title]
@@ -240,10 +242,35 @@ def test_every_generated_fragment_states_its_conditions():
         assert lines[-1].startswith("*") and lines[-1].endswith("*"), (
             f"{path.name} ends with its conditions line"
         )
-        if "lower.py" in lines[0]:
+        if path.name.startswith("legend-"):
+            assert "mnemonics.py" in lines[-1], f"{path.name} says where the meanings come from"
+        elif "lower.py" in lines[0]:
             assert "Representative" in lines[-1], f"{path.name} says the assembly is representative"
+            assert ":class: layers" in path.read_text(), f"{path.name} names its four layers"
         if "trace.mjs" in lines[0]:
             assert "not the compiled code" in lines[-1], f"{path.name} says a trace is a model"
+
+
+def test_every_instruction_in_the_fragments_has_a_meaning():
+    """The legend and the hover text come from one dictionary, and a kernel change that brings a
+    new instruction into a fragment must bring its meaning too."""
+    from tools import lower, mnemonics
+
+    for path in sorted((ROOT / "chapters" / "_generated").glob("*.md")):
+        m = re.search(r"```(asm|wasm)\n(.*?)```", path.read_text(), re.S)
+        if not m:
+            continue
+        name = path.name
+        target = (
+            "wasm"
+            if name.endswith("-wasm.md")
+            else "x86-64"
+            if name.endswith("-x86-64.md")
+            else "aarch64"
+            if "-aarch64" in name
+            else "riscv64"
+        )
+        assert not mnemonics.unknown(target, lower.used_mnemonics(m.group(2))), name
 
 
 def test_glossary_terms_are_bold_and_cite_a_chapter():

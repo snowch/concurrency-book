@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 
 import pytest
 
@@ -72,4 +73,37 @@ def test_assembly_is_coloured_by_mnemonic():
         {"type": "code", "lang": "asm", "value": "increment:\n    lock inc dword ptr [rip + counter]"}
     )
     assert '<span class="tok-type">increment:</span>' in out
-    assert 'class="tok-keyword tok-atomic">lock</span>' in out
+    assert re.search(r'class="tok-keyword tok-atomic"[^>]*>lock</span>', out)
+    # Every mnemonic carries its one-line meaning as a hover, from the dictionary the legend uses.
+    assert 'title="A prefix:' in out and ">inc</span>" in out and 'title="Adds one' in out
+
+
+def test_a_fragment_is_explained_in_its_own_instruction_set():
+    inc = {
+        "type": "include",
+        "file": "_generated/counter-increment-atomic-aarch64.md",
+        "children": [{"type": "code", "lang": "asm", "value": "    ldxr w8, [x9]"}],
+    }
+    assert 'title="A load-exclusive' in render.render(inc)
+    # Outside a fragment the target is unknown, and a mnemonic one instruction set knows still
+    # gets that meaning.
+    bare = {"type": "code", "lang": "asm", "value": "    ldxr w8, [x9]"}
+    assert 'title="A load-exclusive' in render.render(bare)
+
+
+def test_a_folded_note_carries_its_label_and_needs_one():
+    note = {
+        "type": "details",
+        "class": "compiler",
+        "children": [
+            {"type": "summary", "children": [{"type": "text", "value": "Why CM_NOINLINE?"}]},
+            {"type": "paragraph", "children": [{"type": "text", "value": "A compiler note."}]},
+        ],
+    }
+    out = render.render(note)
+    assert out.startswith('<details class="aside compiler"><summary data-label="Compiler">Why CM_NOINLINE?')
+    assert "<p>A compiler note.</p></details>" in out
+    with pytest.raises(ValueError):
+        render.render({**note, "class": "trivia"})
+    with pytest.raises(ValueError):
+        render.render({**note, "class": "compiler os"})

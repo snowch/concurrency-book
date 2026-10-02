@@ -8,7 +8,7 @@ project:
   id: concurrency-book
   title: Concurrency at the Metal
   description: >-
-    Low-level concurrency, taught from executable behaviour down to the instruction. Races,
+    Low-level concurrency, taught from basic C and executable behaviour down to the instruction. Races,
     atomics, locks, memory ordering, cache coherence and lock-free algorithms, each as a tiny C
     program you run on real threads in your browser, with the assembly it compiles to on x86-64,
     AArch64 and RISC-V beside the result.
@@ -38,6 +38,7 @@ project:
     - file: cover.md
     - file: index.md
       title: Preface
+    - file: before_you_start.md
     - file: parts/instructions_and_races.md
       children:
         - file: chapters/what_x_plus_plus_does.md
@@ -80,6 +81,7 @@ project:
         - file: appendices/reproducing_at_a_desk.md
         - file: appendices/the_experiments.md
         - file: appendices/glossary.md
+    - file: appendices/reading_the_fragments.md
 
 # MyST needs a site block to write its parse (_build/site/content). It never renders with this
 # theme: scripts/build-site.py renders the site, and scripts/parse-book.sh tolerates the theme

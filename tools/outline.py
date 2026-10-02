@@ -80,6 +80,26 @@ class Chapter:
 
 
 @dataclass(frozen=True)
+class FrontPage:
+    """A page between the preface and Part I: read before the chapters, numbered like none of them."""
+
+    slug: str
+    title: str
+
+    @property
+    def anchor(self) -> str:
+        return self.slug.replace("_", "-")
+
+    @property
+    def path(self) -> str:
+        return f"{self.slug}.md"
+
+
+#: What a reader is asked to read before ch01, after the preface.
+FRONT = (FrontPage("before_you_start", "Before you start"),)
+
+
+@dataclass(frozen=True)
 class Appendix:
     letter: str
     slug: str
@@ -362,6 +382,7 @@ APPENDICES = (
     Appendix("A", "reproducing_at_a_desk", "Reproducing at a desk"),
     Appendix("B", "the_experiments", "The experiments"),
     Appendix("C", "glossary", "Glossary"),
+    Appendix("D", "reading_the_fragments", "Reading the fragments"),
 )
 
 BY_SLUG = {c.slug: c for c in CHAPTERS}

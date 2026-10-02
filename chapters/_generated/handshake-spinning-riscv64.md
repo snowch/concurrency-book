@@ -17,4 +17,9 @@ await_spinning:
     ret
 ```
 
+:::{div}
+:class: layers
+**Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O2, -march=rv64gc. **Instruction set** RISC-V. **Microarchitecture** whichever core runs it; not shown here.
+:::
+
 *Emitted by clang 18.1.3 for riscv64-unknown-linux-gnu at -O2, -march=rv64gc: RISC-V. Representative: another compiler, version or flag set may emit different instructions.*

@@ -7,13 +7,15 @@ numbering: false
 (cover)=
 *Races, atomics, locks and memory ordering, run in your browser and read down to the instruction.*
 
-A book for engineers who use mutexes and concurrency libraries every day and want to know what
-happens underneath them. Each chapter asks one question, answers it with a program small enough
-to read in one glance, runs that program on real threads in the page, and then shows what the
+A hands-on book for engineers who want to understand what happens underneath concurrency
+primitives, starting from basic C and ending at atomics, memory ordering, cache coherence and
+machine instructions. Each chapter asks one question, answers it with a program small enough to
+read in one glance, runs that program on real threads in the page, and then shows what the
 compiler made of it on x86-64, AArch64, RISC-V and WebAssembly. You change one thing and run it
 again. Spinlocks, mutexes, lock-free stacks and RCU appear only once you have met the problem each
-one solves. [Start with the Preface](#preface) to see how a chapter works and what you need to
-run the programs at a desk.
+one solves. You need basic C and nothing else: no threads, atomics, memory models, assembly or
+processor architecture are assumed. [Before you start](#before-you-start) gives you the notation
+the book uses; [the Preface](#preface) says how a chapter works.
 
 ![Two threads each load, add to and store one shared counter. Their operations interleave on one timeline, both read the same value, and the second store overwrites the first.](web/cover-hero.svg)
 

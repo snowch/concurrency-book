@@ -7,8 +7,9 @@ title: Preface
 
 ## What this book is
 
-This book is for engineers who know how to use a mutex and want to know what is under it. You
-learn concurrency by running it. Each chapter asks one question about threads, memory or the
+This book is for engineers who want to know what is underneath the concurrency primitives they
+use, or are about to use. It starts from basic C and ends at atomics, memory ordering, cache
+coherence and machine instructions, and you learn concurrency by running it. Each chapter asks one question about threads, memory or the
 processor and answers it in four steps:
 
 1. **A tiny program.** A C function small enough to read in one glance, quoted from the
@@ -92,8 +93,12 @@ To read the book and run every experiment: a browser. To build the kernels at a 
 with its WebAssembly linker, Python, Node, and a few minutes. [Appendix A](#reproducing-at-a-desk)
 has the commands, and `make` in a fresh clone builds everything.
 
-You should be comfortable reading C. The functions are deliberately plain, and every chapter says
-what each quoted block does.
+You need basic C: variables, pointers, functions and structs. You do not need to have used
+threads, atomics or a mutex, read assembly, or know what a compiler does to your code. [Before
+you start](#before-you-start) lists what the book takes for granted and teaches the notation,
+and every chapter folds away machinery that is not its subject under a label that says where
+the machinery comes from. The functions are deliberately plain, and every chapter says what each
+quoted block does.
 
 ## Where this starts
 

@@ -1,7 +1,9 @@
 # Concurrency at the Metal
 
-An interactive technical book about low-level concurrency, for engineers who use mutexes and
-want to know what is under them.
+An interactive technical book about low-level concurrency, for engineers who want to know what
+happens underneath the primitives they use. It starts from basic C and ends at atomics, memory
+ordering, cache coherence and machine instructions; no threads, assembly or architecture are
+assumed.
 
 Each chapter asks one question, answers it with a C function small enough to read in one glance,
 runs that function on real threads in your browser (Web Workers sharing one WebAssembly memory),

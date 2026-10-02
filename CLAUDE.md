@@ -5,7 +5,8 @@ Project instructions for anyone, human or AI, working on this book. They are bin
 ## What this is
 
 *Concurrency at the Metal*: an interactive technical book about low-level concurrency, for
-engineers who use mutexes and want to know what is under them. Each chapter asks one question,
+engineers who want to know what is underneath the primitives they use. It assumes basic C and
+nothing else, and ends at atomics, memory ordering, cache coherence and machine instructions. Each chapter asks one question,
 answers it with a C function small enough to read in one glance, runs that function on real
 threads in the reader's browser, shows the instructions four compiler targets emit for it, and
 changes one thing. Races, atomics, locks, memory ordering, cache coherence and lock-free
@@ -159,6 +160,11 @@ nothing. Keep it that way: a cross-origin resource without a CORP header breaks 
    uses the trace.
 7. **The page stays useful without a live run.** Every chapter reads, and every experiment offers
    its trace or its native commands, where shared memory is withheld.
+8. **Incidental machinery never blocks the concept.** Anything on a page that is not the
+   chapter's subject (an attribute, a macro, a library call, a system call, an assembler
+   directive) is explained at its first appearance in a folded note labelled with where it comes
+   from: `c`, `compiler`, `library`, `os`, `isa`, `hardware` or `deep`. The renderer refuses a
+   note without a label. The kernel, the fragments and the results never fold.
 
 ## Adding things
 
@@ -200,6 +206,11 @@ both of its passes over a page before finishing it.
 
 Product and vendor names appear only where the book describes a specific implementation's
 behaviour (what clang 18 emits; what Chromium allows). The book never recommends a vendor.
+
+Every fragment carries a four-layer strip (language, compiler, instruction set,
+microarchitecture) and every mnemonic a hover meaning, both from `tools/mnemonics.py`; a kernel
+change that brings a new instruction into a fragment must add its meaning there, or the build
+fails. Appendix D is generated from the same dictionary.
 
 ## Things that break the build
 

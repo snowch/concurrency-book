@@ -17,4 +17,9 @@ increment_with_cas:
     ret
 ```
 
+:::{div}
+:class: layers
+**Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O2. **Instruction set** x86-64, Intel syntax. **Microarchitecture** whichever core runs it; not shown here.
+:::
+
 *Emitted by clang 18.1.3 for x86_64-unknown-linux-gnu at -O2, Intel syntax: x86-64. Representative: another compiler, version or flag set may emit different instructions.*

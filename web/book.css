@@ -348,6 +348,32 @@ td code { font-size: 12.5px; }
 .admonition > :last-child, .definition > :last-child, .takeaways > :last-child, .model > :last-child { margin-bottom: 0; }
 /* The mental model a chapter ends on: a compact statement later chapters reuse. */
 .model { border-left-color: var(--go); }
+
+/* The four layers under every fragment: what the listing is, and what it is not. The compiler
+   and the instruction set are named; the language is the kernel above; the microarchitecture is
+   whichever core runs the code, which no listing shows. */
+.layers p { margin: .35rem 0 0; font: 12.5px/1.6 var(--chrome); color: var(--faint); }
+.layers strong { font: 600 10.5px/1 var(--chrome); letter-spacing: .06em; text-transform: uppercase;
+                 color: var(--muted); margin-right: .15rem; }
+.layers strong:not(:first-child) { margin-left: .6rem; }
+
+/* A note on incidental machinery: folded away, labelled with where the thing comes from, so a
+   reader can see at a glance that it is not the subject of the page. Only notes fold; the kernel,
+   the fragments and the results never do. */
+details.aside { margin: .9rem 0; border: 1px solid var(--edge); border-radius: 6px; background: var(--panel);
+                padding: 0 .9rem; }
+details.aside > summary { cursor: pointer; padding: .55rem 0; font: 600 13.5px/1.4 var(--chrome); color: var(--muted);
+                          list-style: none; display: flex; align-items: center; gap: .55rem; }
+details.aside > summary::-webkit-details-marker { display: none; }
+details.aside > summary::before { content: attr(data-label); flex: none; font: 600 10.5px/1 var(--chrome);
+                                  letter-spacing: .06em; text-transform: uppercase; color: var(--on-accent);
+                                  background: var(--accent); padding: .3rem .4rem .25rem; border-radius: 4px; }
+details.aside.deep > summary::before { background: var(--muted); }
+details.aside > summary:hover { color: var(--ink); }
+details.aside[open] > summary { border-bottom: 1px solid var(--edge); margin-bottom: .6rem; }
+details.aside > :not(summary) { font-size: 95%; }
+details.aside > :last-child { margin-bottom: .8rem; }
+
 .model > p:first-child > strong:first-child { font-family: var(--chrome); }
 .admonition-title { font: 600 12.5px/1.4 var(--chrome); letter-spacing: .05em;
                     text-transform: uppercase; color: var(--muted); margin: 0 0 .4rem; }

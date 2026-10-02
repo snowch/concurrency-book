@@ -25,6 +25,7 @@ Three node shapes are this book's own:
 
 from __future__ import annotations
 
+import contextvars
 import html
 import json
 import re
@@ -155,12 +156,70 @@ def _lab(node: dict) -> str:
     )
 
 
+#: The instruction set of the generated fragment being rendered, if any, so the highlighter can
+#: give each mnemonic the meaning it has there. Set while an include of a fragment renders.
+_TARGET: contextvars.ContextVar[str | None] = contextvars.ContextVar("fragment_target", default=None)
+
+#: How a generated fragment's file name ends for each instruction set (tools/lower.py names them).
+_FRAGMENT_TARGETS = (
+    ("-aarch64-lse.md", "aarch64"),
+    ("-aarch64.md", "aarch64"),
+    ("-x86-64.md", "x86-64"),
+    ("-riscv64.md", "riscv64"),
+    ("-wasm.md", "wasm"),
+)
+
+
+def _fragment_target(include: dict) -> str | None:
+    name = str(include.get("file", ""))
+    if "_generated/" not in name:
+        return None
+    return next((target for suffix, target in _FRAGMENT_TARGETS if name.endswith(suffix)), None)
+
+
+#: The labels a note may carry: where the machinery it explains comes from. A note's class names
+#: one of these; the renderer prints the label on the fold, so a reader sees before opening it
+#: that the note is not the subject of the page.
+NOTE_LABELS = {
+    "c": "C",
+    "compiler": "Compiler",
+    "library": "Library",
+    "os": "Operating system",
+    "isa": "Instruction set",
+    "hardware": "Hardware",
+    "deep": "Deep dive",
+}
+
+
+def _details(node: dict, footnotes: list | None) -> str:
+    """A MyST dropdown: a folded note. Its class must name where the machinery comes from."""
+    classes = str(node.get("class", "")).split()
+    labels = [c for c in classes if c in NOTE_LABELS]
+    if len(labels) != 1:
+        raise ValueError(
+            f"a dropdown needs exactly one of the note labels {sorted(NOTE_LABELS)} as its class, "
+            f"got {classes}"
+        )
+    label = NOTE_LABELS[labels[0]]
+    kids = node.get("children", [])
+    if not kids or kids[0].get("type") != "summary":
+        raise ValueError("a dropdown needs a title")
+    summary = "".join(render(c, footnotes) for c in kids[0].get("children", []))
+    body = "".join(render(c, footnotes) for c in kids[1:])
+    open_ = " open" if node.get("open") else ""
+    cls = " ".join(["aside", *classes])
+    return (
+        f'<details class="{html.escape(cls)}"{open_}>'
+        f'<summary data-label="{html.escape(label)}">{summary}</summary>{body}</details>'
+    )
+
+
 def _code(node: dict) -> str:
     lang = node.get("lang") or ""
     # One blank line at most: an excerpt that spans two definitions keeps the two blank lines the
     # formatter puts between them in the source, and on a phone every line counts.
     code = re.sub(r"\n(?:[ \t]*\n){2,}", "\n\n", str(node.get("value", "")))
-    body = highlight(code, lang)
+    body = highlight(code, lang, _TARGET.get())
     cls = f' class="language-{html.escape(lang)}"' if lang else ""
     return f"<pre><code{cls}>{body}</code></pre>"
 
@@ -339,7 +398,13 @@ def render(node: dict, footnotes: list | None = None, label: str = "") -> str:
                 + "".join(render(c, footnotes) for c in node.get("children", []))
                 + "</figure>"
             )
-        return f'<div class="generated">{children()}</div>'
+        token = _TARGET.set(_fragment_target(node))
+        try:
+            return f'<div class="generated">{children()}</div>'
+        finally:
+            _TARGET.reset(token)
+    if kind == "details":
+        return _details(node, footnotes)
     if kind == "tabSet":
         return _tab_set(node, footnotes)
     if kind == "blockquote":

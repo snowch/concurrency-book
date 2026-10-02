@@ -12,6 +12,8 @@ from __future__ import annotations
 import html
 import re
 
+from tools import mnemonics
+
 _C_KEYWORDS = (
     "auto break case const continue default do else enum extern for goto if inline register "
     "restrict return sizeof static struct switch typedef union volatile while _Alignas _Alignof "
@@ -112,7 +114,7 @@ _COMPILED: dict[str, re.Pattern] = {}
 _ASM_COMMENT = re.compile(r"(//|#|;;|;).*$")
 
 
-def _asm_line(line: str, wasm: bool) -> str:
+def _asm_line(line: str, wasm: bool, target: str | None = None) -> str:
     """One line of assembly: a label, or a mnemonic and its operands, with a comment at the end."""
     comment = ""
     m = _ASM_COMMENT.search(line)
@@ -137,10 +139,18 @@ def _asm_line(line: str, wasm: bool) -> str:
             )
         ):
             cls = "tok-keyword tok-atomic"
+        # A prefix such as x86-64's `lock` is followed by the instruction it modifies on the same
+        # line; both carry their meaning, so a hover on either explains it.
+        prefixed = re.match(r"^(\s+)(\S+)(.*)$", rest) if mnemonic == "lock" else None
+        if prefixed:
+            indent2, second, rest = prefixed.groups()
         rest = re.sub(
             _NUMBER, lambda n: f'<span class="tok-number">{html.escape(n.group(0))}</span>', html.escape(rest)
         )
-        out += f'{indent}<span class="{cls}">{html.escape(mnemonic)}</span>{rest}'
+        out += f'{indent}<span class="{cls}"{_title(target, mnemonic)}>{html.escape(mnemonic)}</span>'
+        if prefixed:
+            out += f'{indent2}<span class="tok-keyword"{_title(target, second)}>{html.escape(second)}</span>'
+        out += rest
     else:
         out += html.escape(line)
     if comment:
@@ -148,11 +158,19 @@ def _asm_line(line: str, wasm: bool) -> str:
     return out
 
 
-def highlight(code: str, lang: str | None) -> str:
-    """HTML for ``code``, with spans classed ``tok-<kind>`` where the language is known."""
+def _title(target: str | None, mnemonic: str) -> str:
+    """A ``title`` attribute holding the instruction's one-line meaning, or nothing if unknown."""
+    meaning = mnemonics.describe(target, mnemonic)
+    return f' title="{html.escape(meaning)}"' if meaning else ""
+
+
+def highlight(code: str, lang: str | None, target: str | None = None) -> str:
+    """HTML for ``code``, with spans classed ``tok-<kind>`` where the language is known. For
+    assembly, ``target`` names the instruction set so each mnemonic's hover gives its meaning
+    there; without it the first instruction set that knows the mnemonic answers."""
     lang = _ALIASES.get((lang or "").lower(), (lang or "").lower())
     if lang in ("asm", "wasm"):
-        return "\n".join(_asm_line(line, lang == "wasm") for line in code.split("\n"))
+        return "\n".join(_asm_line(line, lang == "wasm", target) for line in code.split("\n"))
     if lang not in _LANGS:
         return html.escape(code)
     pattern = _COMPILED.setdefault(lang, _pattern(lang))

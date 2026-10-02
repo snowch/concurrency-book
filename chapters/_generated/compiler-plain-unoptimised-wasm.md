@@ -23,4 +23,9 @@ wait_plain:
     return
 ```
 
+:::{div}
+:class: layers
+**Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O0, -matomics -mbulk-memory. **Instruction set** WebAssembly. **Microarchitecture** whichever core runs it; not shown here.
+:::
+
 *Emitted by clang 18.1.3 for wasm32 at -O0, -matomics -mbulk-memory: WebAssembly. Representative: another compiler, version or flag set may emit different instructions.*

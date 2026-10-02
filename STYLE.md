@@ -99,11 +99,19 @@ Never type a measured number, even to make a sentence clearer. Point at the pane
 that shows it. A nondeterministic result is *what this run observed*, never *what happens*. See
 AUTHORING_GUIDE.md.
 
+## 18. Incidental machinery never blocks the concept
+
+Never make unexplained machinery a prerequisite for the idea on the page. When a reader meets
+C, compiler, library, operating-system, instruction-set or build machinery that is not the
+chapter's subject, explain enough to unblock them in a folded note labelled with where it comes
+from, and mark it as incidental. When the machinery becomes the subject, teach it in the open.
+The kernel, the fragments and the results never fold. See AUTHORING_GUIDE.md for the note.
+
 ## Before you finish: two passes
 
 **First pass, the sentences.** Rules 1, 5, 11, 12, 13, 14, 15. A scan: minutes per page.
 
-**Second pass, the idea.** Rules 2, 3, 4, 6, 9, 10, 16. Read the page as a reader arriving from the
+**Second pass, the idea.** Rules 2, 3, 4, 6, 9, 10, 16, 18. Read the page as a reader arriving from the
 previous chapter. At each paragraph ask: what does this paragraph claim, and could I point at the
 instruction, the run or the trace that shows it? A page can pass the first pass and fail the
 second: clean sentences, nothing to hold on to.

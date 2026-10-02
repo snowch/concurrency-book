@@ -144,6 +144,29 @@ The trace is a model of operations, not the compiled code. The fragment under ev
 says so, and the panel's caption says so. Prose that describes a trace says *the model* or *the
 trace*, never *the program*.
 
+### Fold what is not the subject
+
+The book assumes basic C and nothing else, so machinery a chapter uses without teaching gets a
+folded note at its first appearance, labelled with where it comes from:
+
+````markdown
+:::{dropdown} Why does every quoted function carry CM_NOINLINE?
+:class: compiler
+`CM_NOINLINE` expands to an attribute that keeps the function out of line, so the chapter has a
+separate function to show. It is not C and not concurrency; read past it.
+:::
+````
+
+The class is one of `c`, `compiler`, `library`, `os`, `isa`, `hardware` or `deep`, and the
+renderer refuses a note without exactly one. The label it prints tells the reader, before they
+open the note, that this is not the subject of the page. A note says what the thing is, why the
+kernel has it, and that it is incidental, in that order, and sends the reader to the chapter
+that teaches it if one exists. Only notes fold. A kernel, a fragment or a result in a note is a
+mistake: evidence is never optional.
+
+Terms the first chapter needs are on the *Before you start* page; every other term is defined
+where the chapter that introduces it needs it, and the glossary says why the book needs it.
+
 ## What no check catches
 
 Read the finished page as somebody who has read every chapter before it and none after, and

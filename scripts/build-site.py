@@ -42,7 +42,7 @@ sys.path.insert(0, str(ROOT))
 
 from tools import experiments  # noqa: E402
 from tools import render as renderer  # noqa: E402
-from tools.outline import APPENDICES, CHAPTERS, EXPERIMENTS, PARTS, UNWRITTEN  # noqa: E402
+from tools.outline import APPENDICES, CHAPTERS, EXPERIMENTS, FRONT, PARTS, UNWRITTEN  # noqa: E402
 
 CONTENT = ROOT / "_build" / "site" / "content"
 WASM = ROOT / "_build" / "wasm"
@@ -71,6 +71,8 @@ def page_list() -> list[dict]:
         },
         {"source": "index.md", "href": "preface.html", "title": "Preface", "label": None},
     ]
+    for f in FRONT:
+        pages.append({"source": f.path, "href": f"{f.anchor}.html", "title": f.title, "label": None})
     for part in PARTS:
         pages.append(
             {
