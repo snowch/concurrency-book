@@ -38,7 +38,7 @@ read_with_hazard:
 
 :::{div}
 :class: layers layer-isa
-**Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O2. **Instruction set** AArch64. **Microarchitecture** whichever core runs it; not shown here.
+**Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O2, -mno-outline-atomics. **Instruction set** AArch64. **Microarchitecture** whichever core runs it; not shown here.
 :::
 
-*Emitted by clang 18.1.3 for aarch64-unknown-linux-gnu at -O2: AArch64. Representative: another compiler, version or flag set may emit different instructions.*
+*Emitted by clang 18.1.3 for aarch64-unknown-linux-gnu at -O2, -mno-outline-atomics: AArch64. Representative: another compiler, version or flag set may emit different instructions.*

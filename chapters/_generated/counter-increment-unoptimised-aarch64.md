@@ -10,7 +10,7 @@ increment:
 
 :::{div}
 :class: layers layer-compiler
-**Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O0. **Instruction set** AArch64. **Microarchitecture** whichever core runs it; not shown here.
+**Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O0, -mno-outline-atomics. **Instruction set** AArch64. **Microarchitecture** whichever core runs it; not shown here.
 :::
 
-*Emitted by clang 18.1.3 for aarch64-unknown-linux-gnu at -O0: AArch64. Representative: another compiler, version or flag set may emit different instructions.*
+*Emitted by clang 18.1.3 for aarch64-unknown-linux-gnu at -O0, -mno-outline-atomics: AArch64. Representative: another compiler, version or flag set may emit different instructions.*

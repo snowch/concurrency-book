@@ -45,7 +45,9 @@ jobs:
         # kernels on Node threads and in Chromium run on AArch64 for real.
         env:
           CLANG: clang-18
-        run: ./scripts/ci-check.sh 2>&1 | tee ci.log
+        run: |
+          set -o pipefail
+          ./scripts/ci-check.sh 2>&1 | tee ci.log
 
       - name: What the browser showed on this runner
         # The smoke test prints each ordering chapter's count as it checks it; keep those lines.

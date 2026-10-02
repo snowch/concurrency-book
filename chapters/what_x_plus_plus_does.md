@@ -180,6 +180,17 @@ beside it where the difference teaches something. Which level produced a fragmen
 the line under it.
 :::
 
+:::{dropdown} What `-mno-outline-atomics` in the AArch64 conditions line is
+:class: compiler
+On AArch64 Linux, clang can compile an atomic operation into a call to a small library routine
+that picks the instruction at run time, by whether the processor has the newer LSE atomics, and
+some installations of clang do that by default. The book turns it off, so a fragment shows the
+instruction and not a call, and makes the choice visible itself: the *AArch64* tab shows what
+every AArch64 core can run, and where a chapter adds an *AArch64 with LSE* tab, that shows the
+single instruction the newer cores have. The flag is in the conditions line because it changes
+what you see.
+:::
+
 ::::{tab-set}
 :::{tab-item} x86-64
 :sync: x86-64

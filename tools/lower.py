@@ -19,6 +19,7 @@ kind of lie the book cannot afford. Set ``CLANG`` to point at the pinned one.
 from __future__ import annotations
 
 import argparse
+import difflib
 import os
 import re
 import shutil
@@ -48,11 +49,21 @@ MAX_PAGES = 1024
 TARGETS = {
     "wasm": ("WebAssembly", "wasm32", ["-matomics", "-mbulk-memory", "-nostdlib"], "#"),
     "x86-64": ("x86-64", "x86_64-unknown-linux-gnu", ["-masm=intel"], "#"),
-    "aarch64": ("AArch64", "aarch64-unknown-linux-gnu", [], "//"),
-    "aarch64-lse": ("AArch64 with LSE atomics", "aarch64-unknown-linux-gnu", ["-march=armv8.1-a"], "//"),
+    "aarch64": ("AArch64", "aarch64-unknown-linux-gnu", ["-mno-outline-atomics"], "//"),
+    "aarch64-lse": (
+        "AArch64 with LSE atomics",
+        "aarch64-unknown-linux-gnu",
+        ["-march=armv8.1-a", "-mno-outline-atomics"],
+        "//",
+    ),
     "riscv64": ("RISC-V", "riscv64-unknown-linux-gnu", ["-march=rv64gc"], "#"),
 }
-COMMON = ["-ffreestanding", "-fno-asynchronous-unwind-tables", "-fno-exceptions"]
+#: Pinned so that every host's clang emits the same instructions: a distribution's clang may
+#: default to a stack protector, and on an AArch64 host to outline atomics, which turn an atomic
+#: operation into a call to a routine that picks the instruction at run time. The fragments
+#: show the instruction, and the AArch64 flag is in their conditions line because it changes
+#: what a reader sees.
+COMMON = ["-ffreestanding", "-fno-asynchronous-unwind-tables", "-fno-exceptions", "-fno-stack-protector"]
 
 #: Directives kept in a fragment: a function's signature in WebAssembly's assembly is one.
 KEEP_DIRECTIVES = (".functype",)
@@ -236,7 +247,11 @@ def check(fragments_: dict[str, str]) -> int:
         if not path.exists():
             bad.append(f"missing: chapters/_generated/{file} (run `make lower`)")
         elif path.read_text() != text:
-            bad.append(f"stale: chapters/_generated/{file} (run `make lower`)")
+            diff = difflib.unified_diff(
+                path.read_text().splitlines(), text.splitlines(), "committed", "this clang", lineterm="", n=1
+            )
+            shown = list(diff)[:24]
+            bad.append(f"stale: chapters/_generated/{file} (run `make lower`)\n    " + "\n    ".join(shown))
     for path in sorted(GENERATED.glob("*.md")):
         if path.name not in fragments_ and "tools/lower.py" in path.read_text().splitlines()[0]:
             bad.append(f"orphan: chapters/_generated/{path.name} (no contract asks for it)")
