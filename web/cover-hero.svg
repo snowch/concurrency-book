@@ -26,12 +26,12 @@
     <line x1="150" y1="92" x2="150" y2="166"/>
     <line x1="630" y1="92" x2="630" y2="166"/>
   </g>
-  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="14" text-anchor="middle">
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13">
     <rect x="150" y="112" width="730" height="42" rx="8" fill="#14191c" stroke="#3d4b53" stroke-width="1.5"/>
-    <text x="205" y="139" fill="#a7b8c1">x</text>
-    <text x="445" y="139" fill="#a7b8c1">both read the same value</text>
-    <text x="760" y="139" fill="#e8756c">the second store overwrites the first</text>
+    <text x="205" y="138" fill="#a7b8c1" text-anchor="middle">x in memory</text>
+    <text x="445" y="138" fill="#a7b8c1" text-anchor="middle">both read the same value</text>
+    <text x="866" y="138" fill="#e8756c" text-anchor="end">the second store overwrites the first</text>
   </g>
-  <path d="M740 86 Q760 100 775 112" fill="none" stroke="#c8791a" stroke-width="2.5" marker-end="url(#arrow)"/>
-  <path d="M825 172 Q830 160 845 154" fill="none" stroke="#c8791a" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M700 88 Q705 100 712 110" fill="none" stroke="#c8791a" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <path d="M815 170 Q808 163 800 156" fill="none" stroke="#c8791a" stroke-width="2.5" marker-end="url(#arrow)"/>
 </svg>
