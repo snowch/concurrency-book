@@ -18,3 +18,6 @@ test-results/
 # Editors
 .DS_Store
 *.swp
+
+# Worktrees that Claude Code agents work in; never part of the book.
+.claude/worktrees/

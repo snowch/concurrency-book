@@ -1,0 +1,64 @@
+name: On AArch64
+
+# The same checks as Quality, on an Arm runner, and then the ordering kernels at a desk on it.
+# x86-64 hides most of what Part III is about: a weakly ordered machine is where the publication
+# and store-buffer tests show their outcomes under every ordering that allows them. The job's
+# step summary keeps what this runner showed, as one observation; the book types none of it in.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: clang 18, lld and clang-format, the compiler the fragments are pinned to
+        run: sudo apt-get update && sudo apt-get install -y clang-18 lld-18 clang-format-18
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Python dependencies
+        run: python -m pip install -r requirements.txt -r requirements-dev.txt
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: MyST (pinned) and Playwright
+        run: |
+          npm install -g "mystmd@$(node -p "require('./package.json').devDependencies.mystmd")"
+          npm install -g playwright@1.56.1
+          playwright install --with-deps chromium
+
+      - name: clang 18 first on the PATH, so clang-format and wasm-ld are the pinned ones
+        run: echo "/usr/lib/llvm-18/bin" >> "$GITHUB_PATH"
+
+      - name: Everything, exactly as `make check` runs it, on AArch64
+        # The fragments are cross-compiled, so they must come out the same on this host; the
+        # kernels on Node threads and in Chromium run on AArch64 for real.
+        env:
+          CLANG: clang-18
+        run: ./scripts/ci-check.sh 2>&1 | tee ci.log
+
+      - name: What the browser showed on this runner
+        # The smoke test prints each ordering chapter's count as it checks it; keep those lines.
+        run: |
+          { echo "## What the browser smoke test showed on $(uname -m)"; echo;
+            grep -E "whatever this device allows|times as long" ci.log | sed 's/^ *ok */- /'; } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: The ordering kernels at a desk, on this runner
+        env:
+          CLANG: clang-18
+        run: ./scripts/desk-report.sh | tee desk-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desk-report-aarch64
+          path: desk-report.md

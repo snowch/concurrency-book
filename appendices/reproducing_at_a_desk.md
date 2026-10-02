@@ -35,6 +35,17 @@ says what they mean, and [Appendix B](#the-experiments) lists them. The time the
 is a wall-clock measurement of one run on your machine, under whatever else it was doing. Treat
 it as a comparison between two settings of one kernel, not as a benchmark.
 
+To see what the ordering chapters' tests do on your machine in one go, run
+`scripts/desk-report.sh`. It builds the store-buffer, the publication and the counter kernels
+and prints a table of what one run showed under every ordering each page offers. On x86-64 the
+store-buffer outcome is the one reordering the instruction set allows, so expect it under
+volatile, relaxed and release-acquire and never under seq_cst or a fence; the publication test's
+stale read is forbidden there by the instruction set, so it can come only from the compiler. On
+AArch64 both tests can show their outcomes under volatile and relaxed, and the table is where
+to look. The repository's *On AArch64* workflow runs the same script on an Arm runner on every
+push to main, and keeps its table as the job's summary: one observation on one machine, like
+yours.
+
 ## The instructions, for yourself
 
 The fragments in the chapters were written by `tools/lower.py` with clang 18 at the flags each
