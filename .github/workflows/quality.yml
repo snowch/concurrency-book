@@ -34,8 +34,12 @@ jobs:
           npm install -g playwright@1.56.1
           playwright install --with-deps chromium
 
+      - name: clang 18 first on the PATH, so clang-format and wasm-ld are the pinned ones
+        # The env context has no PATH to extend, so this is appended through GITHUB_PATH rather
+        # than set on a step, which would replace the runner's PATH and lose bash itself.
+        run: echo "/usr/lib/llvm-18/bin" >> "$GITHUB_PATH"
+
       - name: Everything, exactly as `make check` runs it
         env:
           CLANG: clang-18
-          PATH: /usr/lib/llvm-18/bin:${{ env.PATH }}
         run: ./scripts/ci-check.sh

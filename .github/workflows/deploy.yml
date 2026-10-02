@@ -21,11 +21,10 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Pages
+        # Pages must be switched on by hand, once, with GitHub Actions as the source: Settings,
+        # Pages, "Build and deployment", Source. The workflow's token cannot create the site, and
+        # a site set to "Deploy from a branch" refuses the deployment this workflow makes.
         uses: actions/configure-pages@v5
-        with:
-          # Turns Pages on if it is off. It cannot switch an existing site from "Deploy from a
-          # branch" to "GitHub Actions": that is Settings -> Pages -> Source, by hand.
-          enablement: true
 
       - name: clang 18 and lld, the compiler the fragments are pinned to
         run: sudo apt-get update && sudo apt-get install -y clang-18 lld-18
