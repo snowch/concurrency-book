@@ -148,7 +148,28 @@ Every chapter from here on uses both, and each panel says which it is showing.
 
 Each fragment below was written by the build, from the function above, with clang at
 optimisation level two for the target named under it. Pick an architecture; the choice follows
-you through the book.
+you through the book. The teaching machine's program and these fragments start from the same line
+of C and are not the same thing:
+
+```text
+                           counter++
+                               |
+               +---------------+---------------+
+               |                               |
+       teaching machine                      clang
+       a program written by hand       the compiler's choice, per target
+               |                               |
+       r = load counter                x86-64, AArch64, RISC-V or
+       r = r + 1                       WebAssembly instructions, below
+       store counter = r                       |
+               |                               |
+               +----------- compare -----------+
+```
+
+The machine's program is one way to write the three steps. The fragments are what one compiler
+made of the same line for four targets. Where they agree, the agreement is the point; where they
+differ, the compiler is the reason, and the conditions line under each fragment says which
+compiler.
 
 :::{dropdown} What an optimisation level is
 :class: compiler

@@ -81,34 +81,7 @@ export function standardPanel(shell, spec) {
   runButton.addEventListener("click", run);
 
   // -- trace ---------------------------------------------------------------------------
-  let view = null;
-  const traceControls = {};
-  if (spec.trace && contract.modes.includes("trace")) {
-    const trace = shell.panel("trace");
-    const controls = el("div", "trace-controls");
-    for (const c of spec.trace.controls || []) {
-      const select = el("select");
-      select.name = `trace-${c.name}`;
-      for (const o of c.options) {
-        const opt = el("option", "", String(o));
-        opt.value = String(o);
-        if (String(o) === String(c.default)) opt.selected = true;
-        select.append(opt);
-      }
-      const label = el("label");
-      label.append(el("span", "control-label", c.label), select);
-      controls.append(label);
-      traceControls[c.name] = () => (typeof c.options[0] === "number" ? Number(select.value) : select.value);
-      select.addEventListener("change", () => view && view.reset());
-    }
-    if (controls.children.length) trace.append(controls);
-    const stepper = el("div", "stepper");
-    trace.append(stepper);
-    view = new TraceView(stepper, {
-      program: () => spec.trace.program(shell.values(), Object.fromEntries(Object.entries(traceControls).map(([k, f]) => [k, f()]))),
-      caption: spec.trace.caption,
-    });
-  }
+  const view = spec.trace && contract.modes.includes("trace") ? tracePanel(shell, spec.trace) : null;
 
   // -- native --------------------------------------------------------------------------
   const native = shell.panel("native");
@@ -126,6 +99,39 @@ export function standardPanel(shell, spec) {
   shell.on("mode", (m) => { if (m === "live" && !shell.root.dataset.state?.match(/done|running/) && autorun) run(); });
   if (shell.mode === "live" && autorun) run();
   return { run };
+}
+
+// The trace panel: its own controls, which the page's lab block cannot set, above the stepper
+// over the model. `program(values, traceValues)` builds the program from the shell's controls
+// and these. Returns the view, so a panel can reset it when a control changes.
+export function tracePanel(shell, spec) {
+  const trace = shell.panel("trace");
+  const controls = el("div", "trace-controls");
+  const traceControls = {};
+  let view = null;
+  for (const c of spec.controls || []) {
+    const select = el("select");
+    select.name = `trace-${c.name}`;
+    for (const o of c.options) {
+      const opt = el("option", "", String(o));
+      opt.value = String(o);
+      if (String(o) === String(c.default)) opt.selected = true;
+      select.append(opt);
+    }
+    const label = el("label");
+    label.append(el("span", "control-label", c.label), select);
+    controls.append(label);
+    traceControls[c.name] = () => (typeof c.options[0] === "number" ? Number(select.value) : select.value);
+    select.addEventListener("change", () => view && view.reset());
+  }
+  if (controls.children.length) trace.append(controls);
+  const stepper = el("div", "stepper");
+  trace.append(stepper);
+  view = new TraceView(stepper, {
+    program: () => spec.program(shell.values(), Object.fromEntries(Object.entries(traceControls).map(([k, f]) => [k, f()]))),
+    caption: spec.caption,
+  });
+  return view;
 }
 
 // The per-worker bars many panels draw: one row per worker, scaled to the largest.

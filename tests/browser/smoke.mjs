@@ -247,9 +247,32 @@ async function exerciseCounter(page, base, label) {
   lab = await settled(0);
   check(num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")) && (await lab.getAttribute("data-layouts")).split(";").length === 3,
     `ch12 compare: three layouts, every count exact (same word took ${await lab.getAttribute("data-ratio")} times as long as a line each here)`);
+  // The machine with lines: the chapter's trace block shares one word, and every add takes the
+  // line from the other thread.
+  lab = page.locator(".lab[data-experiment]").nth(1);
+  await page.waitForFunction(() => document.querySelectorAll(".lab[data-experiment]")[1].dataset.mode === "trace");
+  await lab.locator('.stepper select[name="schedule"]').selectOption("manual");
+  for (const t of ["0", "1", "0"]) await lab.locator(`.stepper button[data-thread="${t}"]`).click();
+  check(await lab.locator(".stepper").getAttribute("data-trace-round-trips") === "3" && await lab.locator(".machine .line.moved").count() === 1
+    && (await lab.locator(".machine .line .holders").innerText()).includes("modified"),
+    "ch12 same word in the machine: three adds, three round trips, and the line moved on the last step");
   await page.goto(base + "false-sharing.html");
-  lab = await settled(1);
+  lab = await settled(2);
   check(await lab.getAttribute("data-layout") === "own line" && num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")), "ch13 own line: exact");
+  // On one line, two words still bounce the line on every add; on a line each, every line is
+  // fetched once and stays.
+  lab = page.locator(".lab[data-experiment]").nth(1);
+  await page.waitForFunction(() => document.querySelectorAll(".lab[data-experiment]")[1].dataset.mode === "trace");
+  await lab.locator('.stepper select[name="schedule"]').selectOption("manual");
+  for (const t of ["0", "1", "0", "1"]) await lab.locator(`.stepper button[data-thread="${t}"]`).click();
+  check(await lab.locator(".stepper").getAttribute("data-machine-lines") === "1" && await lab.locator(".stepper").getAttribute("data-trace-round-trips") === "4",
+    "ch13 same line in the machine: four adds to two words on one line, four round trips");
+  lab = page.locator(".lab[data-experiment]").nth(2);
+  await lab.locator('.lab-modes button[data-mode="trace"]').click();
+  await lab.locator('.stepper select[name="schedule"]').selectOption("manual");
+  for (const t of ["0", "1", "0", "1"]) await lab.locator(`.stepper button[data-thread="${t}"]`).click();
+  check(await lab.locator(".stepper").getAttribute("data-machine-lines") === "4" && await lab.locator(".stepper").getAttribute("data-trace-round-trips") === "2",
+    "ch13 own line in the machine: a line per thread, each fetched once, and no round trip after that");
   check(errors.length === 0, `no page errors on ch08 to ch15${errors.length ? ": " + errors.join(" | ") : ""}`);
   // ch16: the compare-and-swap stack accounts for every node; the broken pop need not.
   await page.goto(base + "lock-free-stack.html");

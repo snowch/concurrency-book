@@ -57,6 +57,42 @@ changed. Each worker's increment invalidates the other three's copies, each of t
 the line back for their next increment, and the line circulates exactly as if the word were
 shared. The sharing is real in the hardware and false in the program, which is the name.
 
+The teaching machine draws it. Two words on one line, each thread adding to its own:
+
+```text
+  line0:  [ slot0 | slot1 ]        A adds to slot0; B adds to slot1
+
+  A adds to slot0   ->   A takes line0; B's copy is invalidated
+  B adds to slot1   ->   B takes line0; A's copy is invalidated
+  A adds to slot0   ->   A takes line0 back; B's copy is invalidated
+```
+
+The model, with two threads and two adds each, on one line:
+
+```{include} _generated/sharing-trace-same-line.md
+```
+
+Set it beside the shared word in [ch12](#cache-coherence): the same round trips, for words the
+threads never shared. Now each word on a line of its own:
+
+```{include} _generated/sharing-trace-own-line.md
+```
+
+Each line is fetched once and never moves again, so the third and fourth adds cost no round trip
+at all. Step both yourself. The panel below starts in *trace* mode on the *same line* layout.
+Alternate *Step A* and *Step B* and watch `line0` change hands on every add; then switch the
+layout to *own line* and watch each thread keep its line.
+
+```lab
+experiment: sharing
+workers: 2
+layout: same line
+mode: trace
+```
+
+The threads are not sharing a variable. They are sharing a cache line, and the model, which has
+no idea what a variable is for, charges the same round trip either way.
+
 The fix is alignment and padding. Put each hot variable on a line of its own, by placing it at
 an address that is a multiple of the line size and leaving the rest of the line empty. In C that
 is `_Alignas(64)` on the variable, or an array with a stride of sixty-four bytes, as the kernel's

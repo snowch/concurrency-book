@@ -125,7 +125,7 @@ Used by [ch12](#cache-coherence) and [ch13](#false-sharing).
 | Controls | workers; increments per worker; layout (compare, same word, same line, own line, or two lines apart) |
 | Arguments | `a` increments per worker; `b` 0 the same word, 1 adjacent words, 2 sixty-four bytes apart, 3 a hundred and twenty-eight bytes apart |
 | Results | result 0 is every counter added up |
-| Modes | live, at a desk |
+| Modes | live, trace, at a desk |
 
 ## stack
 

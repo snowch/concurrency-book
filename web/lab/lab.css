@@ -102,17 +102,42 @@
 .machine .cell code { font-size: 12.5px; } .machine .cell b { font: 600 14px/1 var(--chrome); font-variant-numeric: tabular-nums; }
 .machine .cell.changed b { color: var(--on-accent); background: var(--accent); padding: .15rem .35rem; border-radius: 4px; }
 .machine .programs { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .5rem; }
+.machine .programs.with-src { grid-template-columns: 1fr; }
 .machine .program { border: 1px solid var(--edge); border-radius: 5px; background: var(--bg); padding: .4rem .6rem .45rem; min-width: 0; overflow-x: auto; }
 .machine .program-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .2rem .6rem; align-items: baseline; margin-bottom: .25rem; }
 .machine .program-title b { font: 600 12.5px/1.2 var(--chrome); }
 .machine .program-title span { font: 11px/1.3 var(--chrome); color: var(--faint); }
 .machine ol.listing { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
-.machine ol.listing li { display: grid; grid-template-columns: 2.6rem 1.6rem minmax(0, auto) 1fr; gap: .4rem; align-items: baseline; padding: .08rem 0; white-space: nowrap; }
+.machine ol.listing li { display: grid; grid-template-columns: 2.6rem 1.6rem max-content minmax(0, 1fr); gap: .4rem; align-items: baseline; padding: .08rem 0; white-space: nowrap; }
 .machine ol.listing li.at { background: var(--wash); border-radius: 3px; }
 .machine ol.listing .mark { color: var(--accent); font: 600 11px/1.2 var(--chrome); text-align: right; }
 .machine ol.listing .num { color: var(--faint); font-variant-numeric: tabular-nums; text-align: right; font-size: 11px; }
-.machine ol.listing .src { color: var(--faint); font: 11.5px/1.3 var(--mono); }
+.machine ol.listing .src { color: var(--faint); font: 11.5px/1.3 var(--mono); overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 .machine ol.listing .src::before { content: "\2190  "; }
+/* Where the program declares cache lines: what each thread's cache holds, and each line as a box
+   of its words with who holds a copy and in what state. */
+.machine .cache { margin-top: .35rem; font: 11.5px/1.4 var(--chrome); display: flex; flex-wrap: wrap; gap: .3rem; align-items: baseline; }
+.machine .cache i { font-style: normal; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; font-size: 10.5px; }
+.machine .cache code { font-size: 11.5px; border: 1px solid var(--edge); border-radius: 4px; padding: .05rem .35rem; }
+.machine .cache code b { font: 600 10.5px/1 var(--chrome); letter-spacing: .03em; }
+.machine .cache code.st-M { border-color: var(--accent); color: var(--accent); }
+.machine .cache code.st-S { border-color: var(--go); color: var(--go); }
+.machine .cache code.changed { background: var(--wash); }
+.machine .cache .empty { color: var(--faint); }
+.machine .lines { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .5rem; margin: .55rem 0 .45rem; }
+.machine .line { border: 1px solid var(--edge); border-radius: 5px; background: var(--bg); padding: .4rem .6rem .45rem; min-width: 0; }
+.machine .line.moved { border-color: var(--warn); box-shadow: 0 0 0 1px var(--warn) inset; }
+.machine .line-title { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .3rem; }
+.machine .line-title b { font: 600 10.5px/1 var(--chrome); letter-spacing: .05em; text-transform: uppercase; color: var(--faint); }
+.machine .line-title span { font: 11px/1.2 var(--chrome); color: var(--warn); font-weight: 600; }
+.machine .line .cells { display: flex; flex-wrap: wrap; gap: .4rem 1rem; padding: .3rem .5rem; border: 1px dashed var(--edge); border-radius: 4px; margin-bottom: .35rem; }
+.machine .holders { display: flex; flex-wrap: wrap; gap: .3rem .8rem; font: 11.5px/1.4 var(--chrome); color: var(--faint); }
+.machine .holder b { font-weight: 600; }
+.machine .holder.t0 b { color: var(--accent); } .machine .holder.t1 b { color: var(--warn); }
+.machine .holder.t2 b { color: var(--go); } .machine .holder.t3 b { color: var(--tok-number); }
+.machine .holder.st-M, .machine .holder.st-S { color: var(--text); }
+.machine .holder.st-I { opacity: .7; }
+.trace-table td.states { font-family: var(--mono); font-size: 12px; text-align: center; }
 
 /* The deterministic trace: a schedule, a stepper and the table of steps. */
 .trace-controls { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-bottom: .6rem; }

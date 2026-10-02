@@ -4,7 +4,7 @@
   "kernel": "sharing.c",
   "summary": "Every worker increments a counter of its own, placed in the same word as the others', beside them in one cache line, or on a line of its own. The counts agree; the page compares the times side by side.",
   "requires": { "threads": true },
-  "modes": ["live", "native"],
+  "modes": ["live", "trace", "native"],
   "controls": [
     { "name": "workers", "label": "Workers", "kind": "range", "min": 1, "max": 16, "default": 4 },
     { "name": "iterations", "label": "Increments per worker", "kind": "select", "options": [100000, 1000000, 10000000], "default": 1000000 },
@@ -13,6 +13,7 @@
       "hint": "compare runs the first three in turn; the others run one. Two lines apart is for processors that fetch lines in pairs." }
   ],
   "args": ["iterations", "layout"],
+  "trace": { "program": "sharing", "what": "a model of each worker's atomic adds, with the cache line each counter sits on, the cache that holds it, and the round trips the line costs" },
   "results": [
     { "name": "expected", "label": "Expected", "what": "workers times increments per worker" },
     { "name": "observed", "label": "Observed", "what": "every counter added up" },

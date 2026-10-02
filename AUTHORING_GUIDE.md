@@ -32,7 +32,10 @@ Not the order the chapter is read in.
    Put `src`, the line of the kernel a group of operations mirrors, on the group's first
    operation: the teaching machine shows it beside the program, and a listing in
    `tools/trace.mjs` can quote the program beside its C. The machine view is the model drawn,
-   never a second model: it adds no operation, schedule or expected result of its own.
+   never a second model: it adds no operation, schedule or expected result of its own. A program
+   that declares `lines` gets the machine's cache: a state per line per thread and a count of
+   round trips, which is all the coherence the model has. Declare lines only where the chapter
+   argues from them; ch12 to ch14 do, ch10 and ch11 use the same programs without.
 4. **The checks.** The kernel's promises in `tests/threads.mjs`; the panel in
    `tests/browser/smoke.mjs`.
 5. **The fragments.** `make lower`, then read them. If a fragment does not show what the chapter

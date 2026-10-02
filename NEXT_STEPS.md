@@ -29,25 +29,24 @@ The working list. PLAN.md says why; this says what is next.
   (registers, program counter, store buffer, memory, and the program beside the C it mirrors),
   the same model and nothing more; and ch01 puts it first, before clang's fragments, with the
   two microscopes named.
+- The teaching machine, stage two: cache lines in the model, where a program declares them, with
+  a state per line per thread, invalidation on every write and a count of round trips; drawn in
+  the machine and argued from in ch12 to ch14, where false sharing is two words on one line that
+  the reader watches bounce. Every program now carries the C it mirrors.
 
 ## Next
 
-1. The teaching machine, stage two: per-core caches in the model, with a line's state and the
-   invalidation a store sends, drawn in the machine view and used by ch12 to ch14, where false
-   sharing is two variables on one line and a reader watches the line bounce. Model only what
-   those chapters need; the model stays one implementation, in `web/lab/trace.js`, and every
-   table a chapter includes stays what it computes.
-2. A reader-led editorial pass: one systems expert asked to find every statement simplified
+1. A reader-led editorial pass: one systems expert asked to find every statement simplified
    enough to mislead, and one strong programmer without memory-model background asked only to
    say where they stopped understanding why something was true. The machines have checked
    what they can; this is what they cannot.
-3. Run the experiments on an AArch64 device, a phone or an Apple laptop, through the browser and
+2. Run the experiments on an AArch64 device, a phone or an Apple laptop, through the browser and
    the native harness, and record what the ordering chapters show there; the book's biggest
    latent payoff, since x86-64 hides most of what Part III is about.
-4. Run the smoke test in Firefox and in WebKit where a machine with them is available. The
+3. Run the smoke test in Firefox and in WebKit where a machine with them is available. The
    capability check and the fallback are written for both and have been exercised only in
    Chromium.
-5. An "open the hood" appendix: how to print the machine code a browser's engine made from the
+4. An "open the hood" appendix: how to print the machine code a browser's engine made from the
    same WebAssembly (V8 prints it when started with a flag), so the book's "representative"
    native fragments can be set beside what one engine did on one day.
 

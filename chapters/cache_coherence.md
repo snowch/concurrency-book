@@ -76,6 +76,33 @@ The protocol is also what makes [ch09](#relaxed-atomics)'s one order per variabl
 one modified copy at a time, every write goes to it, and every core that wants to read must get
 the line from whoever holds it. Coherence is a property of a line.
 
+The teaching machine shows the protocol's effect once its model is given lines. Each word is told
+which line it sits on, and each thread's cache holds a copy of a line in one of three states:
+*modified*, the only copy, which the thread may write; *shared*, a copy for reading; or no copy.
+A read needs a copy and a write needs the only one, so a write invalidates every other cache's
+copy first. The machine counts every fetch and every invalidation as one round trip, which is
+the cost the panel above timed. Two threads, two atomic adds each, on one shared word:
+
+```{include} _generated/sharing-trace-same-word.md
+```
+
+Every add takes the line from the other thread, and the round trips climb with the adds: the line
+bounces. Step it yourself. The panel below is the same experiment in its *trace* mode with the
+layout set to *same word*. Set the schedule to *manual* and alternate *Step A* and *Step B*,
+watching the line's holder change under the thread cards:
+
+```lab
+experiment: sharing
+workers: 2
+layout: same word
+mode: trace
+```
+
+The model keeps three states where the protocols in the manuals keep four or more, and it counts
+round trips where a core would spend nanoseconds. It is a model of what coherence costs, not an
+implementation of any processor's protocol. The live run is the measurement; the machine is the
+explanation of what the run measured.
+
 ## At the machine
 
 The increment, which is the same instruction in every layout:
@@ -108,8 +135,8 @@ exactly as in [ch03](#atomic-operations), with the address in a register rather 
 because the kernel passed it in. There is no instruction for the coherence traffic. The instruction
 set describes what a core does to its own view of memory; the protocol that keeps the views
 coherent is below it, in the microarchitecture, and the only way to see it from a program is to
-time it. That is why this chapter's experiment has no trace: the model of operations in Part I has
-nothing to say about where a line is.
+time it. The teaching machine shows it only because its model was given lines to hold and a
+count of their round trips; nothing in the instructions it mirrors says where a line is.
 
 The AArch64 loop shows one thing the others hide. `ldxr` marks the address and `stxr` stores only
 if nothing else has written near it since; how near is the core's choice, and on most cores it is
@@ -159,7 +186,8 @@ different time. Timing is the only instrument.
 
 **Your processor's protocol.** MESI is the four-state model; real processors add states and
 directories, and a browser does not say which processor it runs on. The panel measures the
-effect, not the mechanism.
+effect, not the mechanism. The machine's three states are the model's: enough to show why a
+write costs a round trip, and no claim about how your cores keep their copies.
 
 **The line size.** Sixty-four bytes on most cores, a hundred and twenty-eight on some, including
 Apple's AArch64 cores. The *two lines apart* layout exists for them.

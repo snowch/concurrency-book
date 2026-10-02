@@ -145,6 +145,12 @@ want the same experiment on their own machine rather than in the browser. What y
 a run. The page is built so that the result comes from the kernel and not from the author, and a
 reader who presses *Run* is holding the book to that.
 
+Every claim the book makes is one of five kinds, and the page says which. This is what the model
+does. This is what the C standard says. This is what the compiler produced. This is what the
+instruction set guarantees. This is what this device showed on this run. Keeping the five apart
+is the book's discipline, and the four-layer strip under every fragment is there so you can check
+which one a listing is evidence for.
+
 ## Where this starts
 
 [ch01](#what-x-plus-plus-does) takes one line, `counter++`, and shows the three operations it

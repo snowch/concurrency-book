@@ -75,6 +75,19 @@ of the difference between x86-64 and sequential consistency. The model, once mor
 ```{include} _generated/store_buffer-trace-buffered.md
 ```
 
+Give the model lines as well, as [ch12](#cache-coherence) did, and the buffer and the line tell
+one story:
+
+```{include} _generated/store_buffer-trace-lines.md
+```
+
+Each load fetches the other thread's line for reading and finds a zero there, because the store
+that would change it is still in a buffer. Each buffered store takes its line only when it
+drains, at the end, invalidating the copy the other thread read from. The round trip the buffer
+exists to hide is the one the drain pays. The panel's own trace keeps the buffer and leaves the
+lines out, because [ch10](#sequential-consistency) and [ch11](#fences) use the same model before
+caches are introduced; the table above is the model with lines turned on.
+
 ## At the machine
 
 ::::{tab-set}

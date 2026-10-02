@@ -3,6 +3,8 @@
 // counts agree; the times are shown side by side.
 
 import { Runtime } from "./runtime.js";
+import { tracePanel } from "./panel.js";
+import { programs } from "./programs.js";
 import { el, fmt, ms } from "./shell.js";
 
 const LAYOUTS = { "same word": 0, "same line": 1, "own line": 2, "two lines apart": 3 };
@@ -65,6 +67,18 @@ export async function mount(shell) {
   };
   runButton.addEventListener("click", run);
 
+  // The trace follows the layout control: the model gives each counter its line, and shows
+  // the line each atomic add takes. The comparison traces the shared word; two lines apart is
+  // a line each, which is all the model can tell apart.
+  const view = tracePanel(shell, {
+    controls: [{ name: "iterations", label: "Increments per thread in the trace", options: [1, 2, 3], default: 2 }],
+    program: (v, t) => programs.sharing({
+      threads: Math.min(4, v.workers), iterations: t.iterations,
+      layout: v.layout === "compare" ? "same word" : v.layout === "two lines apart" ? "own line" : v.layout,
+    }),
+    caption: "A model of each worker's atomic adds, with the cache line each counter sits on. A write needs the only copy of its line, so it invalidates every other core's copy, and the model counts each fetch and each invalidation as one round trip. Three states and a round-trip count, not any processor's protocol; and not the compiled code. Threads beyond four are left out.",
+  });
+
   const native = shell.panel("native");
   const drawNative = () => {
     const v = shell.values();
@@ -72,7 +86,7 @@ export async function mount(shell) {
       "Each run prints the counters' total and the wall time. Compare the times across the three layouts.");
   };
   drawNative();
-  shell.on("change", () => { drawNative(); if (shell.mode === "live" && autorun) run(); });
+  shell.on("change", () => { view.reset(); drawNative(); if (shell.mode === "live" && autorun) run(); });
   shell.on("mode", (m) => { if (m === "live" && !shell.root.dataset.state?.match(/done|running/) && autorun) run(); });
   if (shell.mode === "live" && autorun) run();
 }

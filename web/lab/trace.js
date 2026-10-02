@@ -10,6 +10,14 @@
 // chapters include.
 //
 // A program: { memory: {name: value}, threads: [{ name, ops: [op] }], expected: {name: value} }.
+// It may also declare cache lines, `lines: { line0: ["x", "y"], line1: ["z"] }`: which words share
+// a line. Then each thread holds a copy of each line in one of three states, M (modified: the
+// only copy), S (shared: a copy for reading) or I (none), a read needs a copy and a write needs
+// the only one, so a write invalidates every other copy, and the machine counts every fetch and
+// every invalidation as one round trip. The values stay in `memory`, which every copy agrees
+// with: the model takes coherence as given and shows what keeping it costs. Words on no line are
+// read and written as if there were no caches. It is a model of selected behaviour, not a
+// processor's protocol.
 // An op is one of
 //   { op: "load", reg, var }                 reg <- memory[var], or the thread's own buffered store
 //   { op: "add", reg, imm, from? }           reg <- (from ?? reg) + imm
@@ -69,8 +77,42 @@ export class Machine {
   constructor(program) {
     this.program = program;
     this.memory = { ...program.memory };
-    this.threads = program.threads.map((t) => ({ name: t.name, ops: t.ops, pc: 0, regs: {}, buffer: [], asleep: null }));
+    this.lines = program.lines ? Object.fromEntries(Object.entries(program.lines).map(([l, vars]) => [l, [...vars]])) : null;
+    this.lineOf = {};
+    if (this.lines) for (const [l, vars] of Object.entries(this.lines)) for (const v of vars) this.lineOf[v] = l;
+    this.roundTrips = 0;
+    this.threads = program.threads.map((t) => ({
+      name: t.name, ops: t.ops, pc: 0, regs: {}, buffer: [], asleep: null,
+      cache: this.lines ? Object.fromEntries(Object.keys(this.lines).map((l) => [l, "I"])) : {},
+    }));
     this.steps = [];
+  }
+
+  // A read of `name` by thread t needs a copy of its line. A miss fetches one, and a modified
+  // copy elsewhere is shared from then on. Returns the words to add to the step's text.
+  #read(t, name) {
+    const l = this.lineOf[name];
+    if (!l || t.cache[l] !== "I") return "";
+    this.roundTrips++;
+    const owner = this.threads.find((o) => o.cache[l] === "M");
+    if (owner) owner.cache[l] = "S";
+    t.cache[l] = "S";
+    return owner ? ` (${l} fetched from ${owner.name}, whose copy is now shared)` : ` (${l} fetched)`;
+  }
+
+  // A write of `name` by thread t needs the only copy of its line: every other copy is
+  // invalidated first, and the line is this thread's, modified, until another thread wants it.
+  #write(t, name) {
+    const l = this.lineOf[name];
+    if (!l || t.cache[l] === "M") return "";
+    this.roundTrips++;
+    const others = this.threads.filter((o) => o !== t && o.cache[l] !== "I");
+    for (const o of others) o.cache[l] = "I";
+    t.cache[l] = "M";
+    if (!others.length) return ` (${l} taken)`;
+    const names = others.map((o) => `${o.name}'s`);
+    const list = names.length === 1 ? names[0] : `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
+    return ` (${l} taken; ${list} cop${others.length === 1 ? "y" : "ies"} invalidated)`;
   }
 
   // Finished: every thread past its last operation, with nothing left in any buffer.
@@ -93,6 +135,7 @@ export class Machine {
   #drainOne(t) {
     const w = t.buffer.shift();
     this.memory[w.var] = w.value;
+    w.how = this.#write(t, w.var);
     return w;
   }
 
@@ -105,7 +148,7 @@ export class Machine {
     if (t.pc >= t.ops.length) {
       if (!t.buffer.length) return null;
       const w = this.#drainOne(t);
-      text = `buffer drains: ${w.var} = ${w.value}`;
+      text = `buffer drains: ${w.var} = ${w.value}${w.how}`;
       advance = false;
     } else {
       const op = t.ops[t.pc];
@@ -114,7 +157,7 @@ export class Machine {
         case "load": {
           const own = [...t.buffer].reverse().find((w) => w.var === op.var);
           t.regs[op.reg] = own ? own.value : this.memory[op.var];
-          text = `${op.reg} = load ${op.var}` + (own ? " (from own buffer)" : "");
+          text = `${op.reg} = load ${op.var}` + (own ? " (from own buffer)" : this.#read(t, op.var));
           break;
         }
         case "add":
@@ -133,7 +176,7 @@ export class Machine {
             text = `store ${op.var} = ${v} (into the buffer)${before}`;
           } else {
             this.memory[op.var] = v;
-            text = `store ${op.var} = ${v}${before}`;
+            text = `store ${op.var} = ${v}${before}${this.#write(t, op.var)}`;
           }
           break;
         }
@@ -142,7 +185,7 @@ export class Machine {
           if (t.buffer.length && at >= 0) {
             const [w] = t.buffer.splice(at, 1);
             this.memory[w.var] = w.value;
-            text = `buffer drains: ${w.var} = ${w.value}`;
+            text = `buffer drains: ${w.var} = ${w.value}${this.#write(t, w.var)}`;
           } else text = "buffer empty";
           break;
         }
@@ -157,23 +200,25 @@ export class Machine {
           const old = this.memory[op.var];
           this.memory[op.var] = old + op.imm;
           if (op.out) t.regs[op.out] = old;
-          text = `atomic add ${op.var}, ${op.imm}` + (op.out ? ` -> ${op.out} = ${old}` : "");
+          text = `atomic add ${op.var}, ${op.imm}` + (op.out ? ` -> ${op.out} = ${old}` : "") + this.#write(t, op.var);
           break;
         }
         case "xchg": {
           while (t.buffer.length) this.#drainOne(t);
           t.regs[op.out] = this.memory[op.var];
           this.memory[op.var] = op.imm;
-          text = `${op.out} = exchange ${op.var}, ${op.imm} -> got ${t.regs[op.out]}`;
+          text = `${op.out} = exchange ${op.var}, ${op.imm} -> got ${t.regs[op.out]}${this.#write(t, op.var)}`;
           break;
         }
         case "cas": {
+          // An atomic read-modify-write takes the line whether or not the compare succeeds, as
+          // a locked compare-and-exchange does.
           while (t.buffer.length) this.#drainOne(t);
           const expect = value(op.expect);
           const ok = this.memory[op.var] === expect;
           if (ok) this.memory[op.var] = value(op.reg);
           t.regs[op.out] = ok ? 1 : 0;
-          text = `cas ${op.var}: expect ${expect}, new ${value(op.reg)} -> ${ok ? "ok" : "failed"}`;
+          text = `cas ${op.var}: expect ${expect}, new ${value(op.reg)} -> ${ok ? "ok" : "failed"}${this.#write(t, op.var)}`;
           break;
         }
         case "jz":
@@ -211,14 +256,14 @@ export class Machine {
         case "loadi": {
           const name = op.base + (t.regs[op.index] ?? 0);
           t.regs[op.reg] = this.memory[name] ?? 0;
-          text = `${op.reg} = load ${name}`;
+          text = `${op.reg} = load ${name}${this.#read(t, name)}`;
           break;
         }
         case "storei": {
           const name = op.base + (t.regs[op.index] ?? 0);
           const v = value(op.reg !== undefined ? op.reg : op.imm);
           this.memory[name] = v;
-          text = `store ${name} = ${v}`;
+          text = `store ${name} = ${v}${this.#write(t, name)}`;
           break;
         }
         case "cas2": {
@@ -229,7 +274,7 @@ export class Machine {
           const [va, vb] = op.values.map(value);
           if (ok) { this.memory[a] = va; this.memory[b] = vb; }
           t.regs[op.out] = ok ? 1 : 0;
-          text = `cas ${a},${b}: expect ${ea},${eb}, new ${va},${vb} -> ${ok ? "ok" : "failed"}`;
+          text = `cas ${a},${b}: expect ${ea},${eb}, new ${va},${vb} -> ${ok ? "ok" : "failed"}${this.#write(t, a)}${this.#write(t, b)}`;
           break;
         }
         case "note":
@@ -249,6 +294,8 @@ export class Machine {
       memory: { ...this.memory },
       buffers: this.threads.map((o) => o.buffer.map((w) => `${w.var}=${w.value}`).join(" ")),
       asleep: this.threads.map((o) => o.asleep !== null),
+      lines: this.lines ? Object.fromEntries(Object.keys(this.lines).map((l) => [l, this.threads.map((o) => o.cache[l])])) : null,
+      roundTrips: this.roundTrips,
     };
     this.steps.push(record);
     return record;
@@ -313,12 +360,15 @@ export function table(machine, variables = Object.keys(machine.program.memory)) 
   const regs = [...new Set(machine.threads.flatMap((t) => Object.keys(t.regs)))];
   const buffered = machine.steps.some((s) => s.buffers.some((b) => b));
   const names = machine.threads.map((t) => t.name);
-  const head = ["Step", "Thread", "Operation", ...regs, ...(buffered ? names.map((n) => `${n}'s buffer`) : []), ...variables];
+  const lines = machine.lines ? Object.keys(machine.lines) : [];
+  const head = ["Step", "Thread", "Operation", ...regs, ...(buffered ? names.map((n) => `${n}'s buffer`) : []), ...variables,
+    ...lines.map((l) => `${l} (${names.join("/")})`), ...(lines.length ? ["Round trips"] : [])];
   const rows = machine.steps.map((s) => [
     String(s.n), s.name, `\`${s.text}\``,
     ...regs.map((r) => (s.regs[r] === undefined ? "" : String(s.regs[r]))),
     ...(buffered ? s.buffers.map((b) => (b ? `\`${b}\`` : "")) : []),
     ...variables.map((v) => String(s.memory[v])),
+    ...lines.map((l) => s.lines[l].join("/")), ...(lines.length ? [String(s.roundTrips)] : []),
   ]);
   const line = (cells) => `| ${cells.join(" | ")} |`;
   return [line(head), line(head.map(() => "---")), ...rows.map(line)].join("\n");

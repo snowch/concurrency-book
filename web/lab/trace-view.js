@@ -153,6 +153,18 @@ export class TraceView {
         regs.append(chip);
       }
       card.append(regs);
+      if (m.lines) {
+        const cache = el("div", "cache");
+        cache.append(el("i", "", "cache"));
+        const held = Object.entries(t.cache).filter(([, st]) => st !== "I");
+        if (!held.length) cache.append(el("span", "empty", "no line"));
+        for (const [l, st] of held) {
+          const chip = el("code", `st-${st}` + (last && before && before.lines && before.lines[l][i] !== st ? " changed" : last && !before && st !== "I" ? " changed" : ""));
+          chip.append(document.createTextNode(`${l} `), el("b", "", st === "M" ? "modified" : "shared"));
+          cache.append(chip);
+        }
+        card.append(cache);
+      }
       const next = el("div", "next");
       if (t.asleep !== null) next.append(el("span", "asleep", `asleep on ${t.asleep}`));
       else if (t.pc < t.ops.length) next.append(el("span", "", "next "), el("code", "", listing(t.ops[t.pc])));
@@ -169,14 +181,47 @@ export class TraceView {
       cpus.append(card);
     });
     view.append(cpus);
-    const mem = el("div", "memory");
-    mem.append(el("i", "", "memory"));
-    for (const [name, value] of Object.entries(m.memory)) {
-      const cell = el("span", "cell" + (last && before && last.memory[name] !== before.memory[name] ? " changed" : last && !before && value !== m.program.memory[name] ? " changed" : ""));
-      cell.append(el("code", "", name), el("b", "", String(value)));
-      mem.append(cell);
+    const changed = (name, value) => (last && before && last.memory[name] !== before.memory[name] ? " changed" : last && !before && value !== m.program.memory[name] ? " changed" : "");
+    const STATES = { M: "modified", S: "shared", I: "no copy" };
+    if (m.lines) {
+      const lines = el("div", "lines");
+      for (const [l, vars] of Object.entries(m.lines)) {
+        const states = m.threads.map((t) => t.cache[l]);
+        const moved = last && (before ? before.lines[l].some((st, i) => st !== states[i]) : states.some((st) => st !== "I"));
+        const box = el("div", "line" + (moved ? " moved" : ""));
+        box.dataset.line = l;
+        const title = el("div", "line-title");
+        title.append(el("b", "", `cache ${l}`), el("span", "", moved ? "moved this step" : ""));
+        box.append(title);
+        const cells = el("div", "cells");
+        for (const name of vars) {
+          const cell = el("span", "cell" + changed(name, m.memory[name]));
+          cell.append(el("code", "", name), el("b", "", String(m.memory[name])));
+          cells.append(cell);
+        }
+        box.append(cells);
+        const holders = el("div", "holders");
+        m.threads.forEach((t, i) => {
+          const h = el("span", `holder t${i} st-${t.cache[l]}`);
+          h.append(el("b", "", t.name), document.createTextNode(` ${STATES[t.cache[l]]}`));
+          holders.append(h);
+        });
+        box.append(holders);
+        lines.append(box);
+      }
+      view.append(lines);
     }
-    view.append(mem);
+    const unlined = Object.entries(m.memory).filter(([name]) => !m.lines || !m.lineOf[name]);
+    if (unlined.length) {
+      const mem = el("div", "memory");
+      mem.append(el("i", "", m.lines ? "memory, on no line" : "memory"));
+      for (const [name, value] of unlined) {
+        const cell = el("span", "cell" + changed(name, value));
+        cell.append(el("code", "", name), el("b", "", String(value)));
+        mem.append(cell);
+      }
+      view.append(mem);
+    }
     // One listing per distinct program: threads that run the same operations share it, each
     // marking its own place.
     const distinct = [];
@@ -185,7 +230,8 @@ export class TraceView {
       const found = distinct.find((d) => d.key === key);
       if (found) found.threads.push(i); else distinct.push({ key, ops: t.ops, threads: [i] });
     });
-    const programs = el("div", "programs");
+    // Programs that carry their C take the full width, so the line beside each operation shows.
+    const programs = el("div", "programs" + (distinct.some((d) => d.ops.some((o) => o.src)) ? " with-src" : ""));
     for (const d of distinct) {
       const box = el("div", "program");
       const title = el("div", "program-title");
@@ -196,7 +242,11 @@ export class TraceView {
         const li = el("li", d.threads.some((i) => m.threads[i].pc === k) ? "at" : "");
         const marks = d.threads.filter((i) => m.threads[i].pc === k).map((i) => m.threads[i].name).join("");
         li.append(el("span", "mark", marks ? `${marks} ▶` : ""), el("span", "num", String(k)), el("code", "", listing(op)));
-        if (op.src) li.append(el("span", "src", op.src));
+        if (op.src) {
+          const src = el("span", "src", op.src);
+          src.title = op.src;
+          li.append(src);
+        }
         ol.append(li);
       });
       box.append(ol);
@@ -205,6 +255,7 @@ export class TraceView {
     view.append(programs);
     this.root.dataset.machineThreads = String(m.threads.length);
     this.root.dataset.machineRegisters = String(m.threads.reduce((n, t) => n + Object.keys(t.regs).length, 0));
+    this.root.dataset.machineLines = String(m.lines ? Object.keys(m.lines).length : 0);
   }
 
   #draw() {
@@ -224,6 +275,7 @@ export class TraceView {
         [done ? "Lost" : "Lost so far", fmt(Math.max(0, lost))],
         ["Steps", m.stuck ? `${m.steps.length}: every thread asleep` : capped ? `${m.steps.length}: stopped, no end in sight` : String(m.steps.length)],
       ];
+    if (m.lines) parts.push(["Round trips", String(m.roundTrips)]);
     this.root.dataset.traceOutcome = m.program.outcome ? m.program.outcome(m.memory) : "";
     for (const [k, v] of parts) {
       const s = el("span", "trace-stat");
@@ -236,6 +288,7 @@ export class TraceView {
     this.root.dataset.traceDone = String(done);
     this.root.dataset.traceSteps = String(m.steps.length);
     this.root.dataset.traceStuck = String(m.stuck);
+    this.root.dataset.traceRoundTrips = String(m.roundTrips);
     for (const b of this.threadButtons.querySelectorAll("button")) {
       const t = m.threads[Number(b.dataset.thread)];
       b.disabled = !m.runnable.includes(Number(b.dataset.thread));
@@ -246,10 +299,13 @@ export class TraceView {
     const regs = [...new Set(m.threads.flatMap((t) => Object.keys(t.regs)))];
     const vars = Object.keys(m.program.memory);
     const buffered = m.program.threads.some((t) => t.ops.some((o) => o.op === "store" && o.buffered));
+    const lines = m.lines ? Object.keys(m.lines) : [];
+    const names = m.threads.map((t) => t.name).join("/");
     const table = el("table");
     const thead = el("thead");
     const hr = el("tr");
-    for (const h of ["Step", "Thread", "Operation", ...regs.map((r) => `register ${r}`), ...(buffered ? m.threads.map((t) => `${t.name}'s buffer`) : []), ...vars]) hr.append(el("th", "", h));
+    for (const h of ["Step", "Thread", "Operation", ...regs.map((r) => `register ${r}`), ...(buffered ? m.threads.map((t) => `${t.name}'s buffer`) : []), ...vars,
+      ...lines.map((l) => `${l} (${names})`), ...(lines.length ? ["round trips"] : [])]) hr.append(el("th", "", h));
     thead.append(hr);
     table.append(thead);
     const tbody = el("tbody");
@@ -269,6 +325,8 @@ export class TraceView {
       for (const r of regs) tr.append(el("td", "num", s.regs[r] === undefined ? "" : String(s.regs[r])));
       if (buffered) for (const b of s.buffers) tr.append(el("td", "buf", b));
       for (const v of vars) tr.append(el("td", "num", String(s.memory[v])));
+      for (const l of lines) tr.append(el("td", "states", s.lines[l].join("/")));
+      if (lines.length) tr.append(el("td", "num", String(s.roundTrips)));
       tbody.append(tr);
     });
     table.append(tbody);

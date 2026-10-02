@@ -136,7 +136,7 @@ nothing. Keep it that way: a cross-origin resource without a CORP header breaks 
 1. **The interactive UI is a view of the implementation, never a scripted animation.** A count on
    the page was read from the kernel's shared memory after the workers finished. A time is wall
    time on the reader's device, and the page says so. JavaScript draws; it never computes a
-   result a kernel reports. The one exception is the trace, which is a model, and every trace says it is a model and not the compiled code. The page draws that model as a teaching machine (registers, program counter, store buffer, memory, program); the machine view is a view of `web/lab/trace.js` and adds no semantics, scheduler, interpreter or expected results of its own, and its programs are written by hand to mirror a kernel, never presented as compiler output.
+   result a kernel reports. The one exception is the trace, which is a model, and every trace says it is a model and not the compiled code. The page draws that model as a teaching machine (registers, program counter, store buffer, memory, program, and cache lines with a state per thread where a program declares them); the machine view is a view of `web/lab/trace.js` and adds no semantics, scheduler, interpreter or expected results of its own, and its programs are written by hand to mirror a kernel, never presented as compiler output.
 2. **No number typed into prose.** Lost updates, times, rates and retry counts come from a live
    run, from a trace table under `chapters/_generated/`, or from the reader's own device.
    `scripts/verify-numbers.py` fails the build otherwise. A number that must be typed takes
