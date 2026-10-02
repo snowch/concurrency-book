@@ -710,6 +710,11 @@ def manifest() -> str:
         {
             "name": TITLE,
             "short_name": "Concurrency",
+            # The identity of the installed app. Without it a browser identifies the app by its
+            # start URL, and sibling books served from the same origin (a laptop's localhost, say)
+            # are told apart only by their paths; a name of our own is unambiguous wherever the
+            # site is served.
+            "id": "concurrency-book",
             "start_url": "index.html",
             "scope": "./",
             "display": "standalone",
