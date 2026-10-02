@@ -189,7 +189,10 @@ target.
 - **C kernels:** freestanding, `<stdatomic.h>` and `<stdint.h>` only, no allocation, no I/O.
   Readable before fast: this code is quoted in a book. Every shared variable says in a comment
   what it is for. `CM_NOINLINE` on a function the chapter quotes as a fragment, so its
-  instructions are its own. clang-format with the repository's `.clang-format`.
+  instructions are its own. clang-format with the repository's `.clang-format`. A construct
+  beyond Kernighan and Ritchie's C (a C99 or C11 feature, a clang attribute or builtin, a
+  predefined macro) needs an entry in `tools/cdict.py`, which generates Appendix E; the build
+  fails on one it does not know, and on an entry no kernel uses.
 - **JavaScript:** plain ES modules, no framework, no build step. It moves bytes and draws what
   the kernel reports.
 - **Python tooling:** the renderer, the scripts and the tests. `python3 -m pytest`, ruff clean.

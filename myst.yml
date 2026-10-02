@@ -82,6 +82,7 @@ project:
         - file: appendices/the_experiments.md
         - file: appendices/glossary.md
     - file: appendices/reading_the_fragments.md
+    - file: appendices/the_c_after_kernighan_and_ritchie.md
 
 # MyST needs a site block to write its parse (_build/site/content). It never renders with this
 # theme: scripts/build-site.py renders the site, and scripts/parse-book.sh tolerates the theme

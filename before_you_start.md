@@ -47,6 +47,8 @@ never fold, because they are the evidence.
 ## The C you will meet
 
 The kernels are short and use a small part of C. Everything in this table appears in them.
+Kernighan and Ritchie covers the first eight rows; everything from `uint32_t` down came later,
+and [Appendix E](#the-c-after-kernighan-and-ritchie) lists all of it, generated from the kernels.
 
 | You will read | It means | From |
 |---|---|---|

@@ -181,6 +181,11 @@ Every mnemonic in a fragment carries two lines on hover, what it does and why it
 program with more than one thread, from `tools/mnemonics.py`; the legend in Appendix D has the
 same two columns. A new instruction in a fragment needs its entry there, or the build fails.
 
+The C the kernels use beyond Kernighan and Ritchie is listed in `tools/cdict.py` and generated
+into Appendix E: a new `<stdatomic.h>` call, ordering, fixed-width type, attribute, builtin or
+predefined macro in a kernel needs its entry there, with what it is and which chapter teaches
+what it is for, or the build fails.
+
 Terms the first chapter needs are on the *Before you start* page; every other term is defined
 where the chapter that introduces it needs it, and the glossary says why the book needs it.
 

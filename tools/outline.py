@@ -383,6 +383,7 @@ APPENDICES = (
     Appendix("B", "the_experiments", "The experiments"),
     Appendix("C", "glossary", "Glossary"),
     Appendix("D", "reading_the_fragments", "Reading the fragments"),
+    Appendix("E", "the_c_after_kernighan_and_ritchie", "The C after Kernighan and Ritchie"),
 )
 
 BY_SLUG = {c.slug: c for c in CHAPTERS}

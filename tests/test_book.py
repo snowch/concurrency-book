@@ -242,6 +242,9 @@ def test_every_generated_fragment_states_its_conditions():
         assert lines[-1].startswith("*") and lines[-1].endswith("*"), (
             f"{path.name} ends with its conditions line"
         )
+        if path.name.startswith("cdict-"):
+            assert "cdict.py" in lines[-1], f"{path.name} says where the entries come from"
+            continue
         if path.name.startswith("legend-"):
             assert "mnemonics.py" in lines[-1], f"{path.name} says where the meanings come from"
         elif "lower.py" in lines[0]:
@@ -273,6 +276,14 @@ def test_every_instruction_in_the_fragments_has_a_meaning():
             else "riscv64"
         )
         assert not mnemonics.unknown(target, lower.used_mnemonics(m.group(2))), name
+
+
+def test_the_c_appendix_lists_exactly_what_the_kernels_use():
+    """Appendix E is generated from a dictionary that the kernels are held to, both ways."""
+    from tools import cdict
+
+    assert not cdict.unknown(), "a kernel uses a construct the dictionary does not explain"
+    assert not cdict.unused(), "the dictionary lists a construct no kernel uses"
 
 
 def test_glossary_terms_are_bold_and_cite_a_chapter():

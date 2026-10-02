@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from tools import experiments, mnemonics  # noqa: E402
+from tools import cdict, experiments, mnemonics  # noqa: E402
 from tools.outline import EXPERIMENTS  # noqa: E402
 
 GENERATED = ROOT / "chapters" / "_generated"
@@ -211,6 +211,14 @@ def fragments(version: str) -> dict[str, str]:
                 out[Path(lowering.fragment(name, target)).name] = fragment(exp, lowering, target, version)
     for target in mnemonics.BY_TARGET:
         out[f"legend-{target}.md"] = legend(target)
+    # The C beyond Kernighan and Ritchie, held to the kernels the same way the legend is held
+    # to the fragments.
+    if cdict.unknown():
+        sys.exit(f"the kernels use {sorted(cdict.unknown())}, which tools/cdict.py cannot explain")
+    if cdict.unused():
+        sys.exit(f"tools/cdict.py lists {sorted(cdict.unused())}, which no kernel uses")
+    for group in cdict.GROUPS:
+        out[f"cdict-{group}.md"] = cdict.table(group)
     return out
 
 
