@@ -19,7 +19,7 @@
     { "name": "elapsed", "label": "Elapsed", "what": "per layout, from the start barrier opening to the last worker finishing" }
   ],
   "lowerings": [
-    { "name": "bump", "functions": ["bump"], "opt": "O2" }
+    { "name": "bump", "layer": "microarchitecture", "functions": ["bump"], "opt": "O2" }
   ],
   "native": { "args": "ITERATIONS LAYOUT", "example": "4 1000000 1",
     "results": ["every counter added up"] }

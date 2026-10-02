@@ -356,6 +356,21 @@ td code { font-size: 12.5px; }
 .layers strong { font: 600 10.5px/1 var(--chrome); letter-spacing: .06em; text-transform: uppercase;
                  color: var(--muted); margin-right: .15rem; }
 .layers strong:not(:first-child) { margin-left: .6rem; }
+/* The layer a listing is evidence for, set in relief: the contract names it per lowering, and a
+   chapter that argues from another layer wraps the include in a div classed layer-<name>. The
+   four strongs are in the order language, compiler, instruction set, microarchitecture. */
+.layers strong.lit, .layer-language .layers strong:nth-of-type(1), .layer-compiler .layers strong:nth-of-type(2),
+.layer-isa .layers strong:nth-of-type(3), .layer-microarchitecture .layers strong:nth-of-type(4) {
+  color: var(--on-accent); background: var(--accent); padding: .22rem .35rem .18rem; border-radius: 4px; }
+.layers.layer-language strong:nth-of-type(1), .layers.layer-compiler strong:nth-of-type(2),
+.layers.layer-isa strong:nth-of-type(3), .layers.layer-microarchitecture strong:nth-of-type(4) {
+  color: var(--on-accent); background: var(--accent); padding: .22rem .35rem .18rem; border-radius: 4px; }
+/* A chapter's wrapper wins over the fragment's own default. */
+.layer-language .layers strong, .layer-compiler .layers strong, .layer-isa .layers strong,
+.layer-microarchitecture .layers strong { color: var(--muted); background: none; padding: 0; }
+.layer-language .layers strong:nth-of-type(1), .layer-compiler .layers strong:nth-of-type(2),
+.layer-isa .layers strong:nth-of-type(3), .layer-microarchitecture .layers strong:nth-of-type(4) {
+  color: var(--on-accent); background: var(--accent); padding: .22rem .35rem .18rem; }
 
 /* A note on incidental machinery: folded away, labelled with where the thing comes from, so a
    reader can see at a glance that it is not the subject of the page. Only notes fold; the kernel,

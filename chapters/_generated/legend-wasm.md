@@ -2,53 +2,53 @@
 
 *WebAssembly: a stack machine; an instruction pops its operands and pushes its result.*
 
-| Instruction | What it does |
-|---|---|
-| `atomic.fence` (atomic or ordering) | A fence: this thread's earlier accesses are ordered before its later ones, as other threads see them. |
-| `i32.atomic.load` (atomic or ordering) | An atomic load of a 32-bit word, sequentially consistent. |
-| `i32.atomic.rmw.add` (atomic or ordering) | Atomically adds to a 32-bit word in memory and pushes the old value. |
-| `i32.atomic.rmw.cmpxchg` (atomic or ordering) | Compare-and-swap on a 32-bit word: stores the new value if the word equals the expected one, and pushes the old value either way. |
-| `i32.atomic.rmw.sub` (atomic or ordering) | Atomically subtracts from a 32-bit word in memory and pushes the old value. |
-| `i32.atomic.rmw.xchg` (atomic or ordering) | Atomically exchanges a 32-bit word in memory and pushes the old value. |
-| `i32.atomic.store` (atomic or ordering) | An atomic store of a 32-bit word, sequentially consistent. |
-| `i64.atomic.load` (atomic or ordering) | An atomic load of a 64-bit word, sequentially consistent. |
-| `i64.atomic.load32_u` (atomic or ordering) | An atomic load of a 32-bit word, extended with zeros to 64 bits. |
-| `i64.atomic.rmw.cmpxchg` (atomic or ordering) | Compare-and-swap on a 64-bit word: stores the new value if the word equals the expected one, and pushes the old value either way. |
-| `memory.atomic.notify` (atomic or ordering) | Wakes up to the given number of threads waiting on the address, and pushes how many it woke. |
-| `memory.atomic.wait32` (atomic or ordering) | If the 32-bit word equals the expected value, sleeps until a notify on the address or the timeout; pushes why it woke. |
-| `block` | Opens a block; a branch to it leaves it. |
-| `br` | Branches to the block or loop at the named depth: out of a block, back to the start of a loop. |
-| `br_if` | Branches if the value on top of the stack is not zero. |
-| `br_table` | Branches to one of several depths, chosen by the value on top of the stack. |
-| `call` | Calls a function. |
-| `drop` | Discards the value on top of the stack. |
-| `end_block` | Closes a block. |
-| `end_loop` | Closes a loop. |
-| `global.get` | Pushes a global variable's value. |
-| `i32.add` | Pops two 32-bit values and pushes their sum. |
-| `i32.and` | Pops two 32-bit values and pushes their bitwise and. |
-| `i32.const` | Pushes a 32-bit constant. |
-| `i32.eq` | Pops two values and pushes one if they are equal, else zero. |
-| `i32.eqz` | Pops a value and pushes one if it is zero, else zero. |
-| `i32.ge_s` | Pops two values and pushes one if the first is greater or equal, as signed numbers. |
-| `i32.gt_s` | Pops two values and pushes one if the first is greater, as signed numbers. |
-| `i32.le_s` | Pops two values and pushes one if the first is less or equal, as signed numbers. |
-| `i32.load` | A plain load of a 32-bit word; on shared memory it promises neither atomicity nor ordering. |
-| `i32.lt_s` | Pops two values and pushes one if the first is less, as signed numbers. |
-| `i32.ne` | Pops two values and pushes one if they differ, else zero. |
-| `i32.shl` | Pops two values and pushes the first shifted left by the second. |
-| `i32.store` | A plain store of a 32-bit word; on shared memory it promises neither atomicity nor ordering. |
-| `i32.sub` | Pops two 32-bit values and pushes their difference. |
-| `i32.wrap_i64` | Keeps the low 32 bits of a 64-bit value. |
-| `i64.add` | Pops two 64-bit values and pushes their sum. |
-| `i64.and` | Pops two 64-bit values and pushes their bitwise and. |
-| `i64.const` | Pushes a 64-bit constant. |
-| `i64.ne` | Pops two 64-bit values and pushes one if they differ, else zero. |
-| `i64.or` | Pops two 64-bit values and pushes their bitwise or. |
-| `local.get` | Pushes a local variable's value. |
-| `local.set` | Pops a value into a local variable. |
-| `local.tee` | Sets a local variable to the value on top of the stack and leaves the value there. |
-| `loop` | Opens a loop; a branch to it goes back to its start. |
-| `return` | Returns from the function. |
+| Instruction | What it does | Why it matters here |
+|---|---|---|
+| `atomic.fence` (atomic or ordering) | A fence: this thread's earlier accesses are ordered before its later ones, as other threads see them. | The fence of ch11 in WebAssembly, which the engine lowers to whatever its host needs. |
+| `i32.atomic.rmw.add` (atomic or ordering) | Atomically adds to a 32-bit word in memory and pushes the old value. | ch03's atomic increment, which the engine lowers to the host's own atomic add. |
+| `i32.atomic.rmw.cmpxchg` (atomic or ordering) | Compare-and-swap on a 32-bit word: stores the new value if the word equals the expected one, and pushes the old value either way. | The compare-and-swap of ch04, and the foundation of every lock-free structure in Part V. |
+| `i32.atomic.rmw.sub` (atomic or ordering) | Atomically subtracts from a 32-bit word in memory and pushes the old value. | An atomic decrement: ch25's seat count when every access is atomic. |
+| `i32.atomic.rmw.xchg` (atomic or ordering) | Atomically exchanges a 32-bit word in memory and pushes the old value. | The test-and-set of ch05: one atomic swap takes the lock and reports whether it was free. |
+| `i64.atomic.rmw.cmpxchg` (atomic or ordering) | Compare-and-swap on a 64-bit word: stores the new value if the word equals the expected one, and pushes the old value either way. | The double-width compare-and-swap of ch17: pointer and tag replaced together, or not at all. |
+| `memory.atomic.notify` (atomic or ordering) | Wakes up to the given number of threads waiting on the address, and pushes how many it woke. | The wake half of ch06's sleeping lock and ch22's handshake. |
+| `memory.atomic.wait32` (atomic or ordering) | If the 32-bit word equals the expected value, sleeps until a notify on the address or the timeout; pushes why it woke. | The sleep half of ch06's sleeping lock: the compare and the sleep are one step, so no wake-up can be lost between them. |
+| `block` | Opens a block; a branch to it leaves it. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `br` | Branches to the block or loop at the named depth: out of a block, back to the start of a loop. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `br_if` | Branches if the value on top of the stack is not zero. | The back edge of a retry loop or a spin. |
+| `br_table` | Branches to one of several depths, chosen by the value on top of the stack. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `call` | Calls a function. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `drop` | Discards the value on top of the stack. | A register copy or a constant: invisible to every other thread. |
+| `end_block` | Closes a block. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `end_loop` | Closes a loop. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `global.get` | Pushes a global variable's value. | A register copy or a constant: invisible to every other thread. |
+| `i32.add` | Pops two 32-bit values and pushes their sum. | Arithmetic on the stack between a load and a store: the middle of the three steps. |
+| `i32.and` | Pops two 32-bit values and pushes their bitwise and. | Arithmetic in a register: invisible to every other thread. |
+| `i32.atomic.load` | An atomic load of a 32-bit word, sequentially consistent. | An atomic load: indivisible and ordered, which a plain load on shared memory is not. |
+| `i32.atomic.store` | An atomic store of a 32-bit word, sequentially consistent. | An atomic store: indivisible and ordered, which a plain store on shared memory is not. |
+| `i32.const` | Pushes a 32-bit constant. | A register copy or a constant: invisible to every other thread. |
+| `i32.eq` | Pops two values and pushes one if they are equal, else zero. | Arithmetic in a register: invisible to every other thread. |
+| `i32.eqz` | Pops a value and pushes one if it is zero, else zero. | The test of a spin: did the load see the value the loop is waiting for? |
+| `i32.ge_s` | Pops two values and pushes one if the first is greater or equal, as signed numbers. | Arithmetic in a register: invisible to every other thread. |
+| `i32.gt_s` | Pops two values and pushes one if the first is greater, as signed numbers. | Arithmetic in a register: invisible to every other thread. |
+| `i32.le_s` | Pops two values and pushes one if the first is less or equal, as signed numbers. | Arithmetic in a register: invisible to every other thread. |
+| `i32.load` | A plain load of a 32-bit word; on shared memory it promises neither atomicity nor ordering. | A plain load: with another thread writing the word, a data race. |
+| `i32.lt_s` | Pops two values and pushes one if the first is less, as signed numbers. | Arithmetic in a register: invisible to every other thread. |
+| `i32.ne` | Pops two values and pushes one if they differ, else zero. | Arithmetic in a register: invisible to every other thread. |
+| `i32.shl` | Pops two values and pushes the first shifted left by the second. | Arithmetic in a register: invisible to every other thread. |
+| `i32.store` | A plain store of a 32-bit word; on shared memory it promises neither atomicity nor ordering. | A plain store: another thread may see it at any time, or not yet. |
+| `i32.sub` | Pops two 32-bit values and pushes their difference. | Arithmetic in a register: invisible to every other thread. |
+| `i32.wrap_i64` | Keeps the low 32 bits of a 64-bit value. | Arithmetic in a register: invisible to every other thread. |
+| `i64.add` | Pops two 64-bit values and pushes their sum. | Arithmetic in a register: invisible to every other thread. |
+| `i64.and` | Pops two 64-bit values and pushes their bitwise and. | Arithmetic in a register: invisible to every other thread. |
+| `i64.atomic.load` | An atomic load of a 64-bit word, sequentially consistent. | An atomic load of a tagged pointer: ch17 reads the pointer and its tag as one word. |
+| `i64.atomic.load32_u` | An atomic load of a 32-bit word, extended with zeros to 64 bits. | A load: the read half of a read-modify-write, and the moment this thread's view of the word is taken. |
+| `i64.const` | Pushes a 64-bit constant. | A register copy or a constant: invisible to every other thread. |
+| `i64.ne` | Pops two 64-bit values and pushes one if they differ, else zero. | Arithmetic in a register: invisible to every other thread. |
+| `i64.or` | Pops two 64-bit values and pushes their bitwise or. | Arithmetic in a register: invisible to every other thread. |
+| `local.get` | Pushes a local variable's value. | A register copy or a constant: invisible to every other thread. |
+| `local.set` | Pops a value into a local variable. | A register copy or a constant: invisible to every other thread. |
+| `local.tee` | Sets a local variable to the value on top of the stack and leaves the value there. | A register copy or a constant: invisible to every other thread. |
+| `loop` | Opens a loop; a branch to it goes back to its start. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `return` | Returns from the function. | The end of the function; nothing here touches shared memory. |
 
 *The meanings are tools/mnemonics.py's, the dictionary that also gives every fragment its hover text. What an instruction costs, and how a core carries it out, is not stated: that is the microarchitecture's.*

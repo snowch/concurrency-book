@@ -29,12 +29,21 @@ class ContractError(Exception):
     """An ``experiment.json`` that does not say what the build needs."""
 
 
+#: The four layers the book keeps apart, as a listing's strip names them.
+LAYERS = ("language", "compiler", "isa", "microarchitecture")
+
+
 @dataclass(frozen=True)
 class Lowering:
     name: str
     functions: tuple[str, ...]
     opt: str
     targets: tuple[str, ...]
+    #: The layer this listing is evidence for, which the strip under it sets in relief: ``isa``
+    #: for most, ``compiler`` where the point is the compiler's choice, ``language`` where it is
+    #: what the C asked for, ``microarchitecture`` where the explanation is in the layer no
+    #: listing shows.
+    layer: str = "isa"
 
     def fragment(self, experiment: str, target: str) -> str:
         """The generated fragment's file name, relative to ``chapters/``."""
@@ -113,7 +122,10 @@ def load(name: str) -> Experiment:
         _check(all(t in TARGETS for t in targets), f"{path}: lowering targets must be from {TARGETS}")
         _check(lw.get("opt") in ("O0", "O1", "O2", "O3", "Os"), f"{path}: lowering opt is O0..O3 or Os")
         _check(lw.get("functions"), f"{path}: a lowering names at least one function")
-        lowerings.append(Lowering(lw["name"], tuple(lw["functions"]), lw["opt"], targets))
+        layer = lw.get("layer", "isa")
+        if layer not in LAYERS:
+            raise ContractError(f"{name}: lowering {lw['name']!r} names layer {layer!r}; one of {LAYERS}")
+        lowerings.append(Lowering(lw["name"], tuple(lw["functions"]), lw["opt"], targets, layer))
     native = raw.get("native")
     if "native" in modes:
         _check(isinstance(native, dict) and "example" in native, f"{path}: native mode needs native.example")

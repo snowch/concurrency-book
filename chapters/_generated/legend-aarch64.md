@@ -2,47 +2,47 @@
 
 *AArch64: destination first, `[x0]` is memory at the address in x0.*
 
-| Instruction | What it does |
-|---|---|
-| `cas` (atomic or ordering) | Compare-and-swap: if the memory word equals the first register, stores the second; the first receives the old value. An LSE instruction. |
-| `casa` (atomic or ordering) | Compare-and-swap with acquire ordering. An LSE instruction. |
-| `clrex` (atomic or ordering) | Clears the exclusive monitor that a load-exclusive set. |
-| `dmb` (atomic or ordering) | A data memory barrier: the accesses before it are ordered before the accesses after it, for the domain and kind named. |
-| `ldadd` (atomic or ordering) | Atomically adds a register to a memory word and returns the old value. An LSE instruction. |
-| `ldar` (atomic or ordering) | A load with acquire ordering: no later access of this thread can be reordered before it. |
-| `ldaxr` (atomic or ordering) | A load-exclusive with acquire ordering. |
-| `ldxr` (atomic or ordering) | A load-exclusive: loads the word and marks the address, so a later store-exclusive succeeds only if nothing wrote it in between. |
-| `stlr` (atomic or ordering) | A store with release ordering: no earlier access of this thread can be reordered after it. |
-| `stlxr` (atomic or ordering) | A store-exclusive with release ordering. |
-| `stxr` (atomic or ordering) | A store-exclusive: stores only if the address is still marked by the matching load-exclusive, and reports failure as one in a register. |
-| `swpa` (atomic or ordering) | Atomically swaps a register with a memory word, with acquire ordering. An LSE instruction. |
-| `add` | Adds the last two operands into the first. |
-| `adrp` | Puts the address of a 4 KiB page into a register, the first half of forming an address. |
-| `and` | Bitwise and into the first operand. |
-| `b` | Branches unconditionally. |
-| `b.eq` | Branches if the last compare found the operands equal. |
-| `b.ge` | Branches if the last compare found the first operand greater or equal, as signed numbers. |
-| `b.gt` | Branches if the last compare found the first operand greater, as signed numbers. |
-| `b.lt` | Branches if the last compare found the first operand less, as signed numbers. |
-| `b.ne` | Branches if the last compare found the operands unequal. |
-| `b.pl` | Branches if the last result was not negative. |
-| `cbnz` | Branches if the register is not zero. |
-| `cbz` | Branches if the register is zero. |
-| `ccmp` | Compares only if the condition holds; otherwise sets the flags to the value given. |
-| `cmp` | Subtracts to set the flags, keeping no result. |
-| `cset` | Sets a register to one if the condition holds, else zero. |
-| `csetm` | Sets a register to all ones if the condition holds, else zero. |
-| `ldr` | Loads from memory into a register. |
-| `lsl` | Shifts left. |
-| `mov` | Copies a register or a constant into a register. |
-| `orr` | Bitwise or into the first operand. |
-| `ret` | Returns from the function. |
-| `sbfiz` | Moves a bit field into position, extending the sign. |
-| `str` | Stores a register to memory. |
-| `sub` | Subtracts the last operand from the middle one into the first. |
-| `subs` | Subtracts and sets the flags. |
-| `sxtw` | Extends a 32-bit value to 64 bits with its sign. |
-| `tbnz` | Branches if the named bit of the register is not zero. |
-| `tbz` | Branches if the named bit of the register is zero. |
+| Instruction | What it does | Why it matters here |
+|---|---|---|
+| `cas` (atomic or ordering) | Compare-and-swap: if the memory word equals the first register, stores the second; the first receives the old value. An LSE instruction. | The compare-and-swap of ch04 in one instruction, where a core without LSE needs a loop of ldxr and stxr. |
+| `casa` (atomic or ordering) | Compare-and-swap with acquire ordering. An LSE instruction. | ch04's compare-and-swap with ch08's acquire ordering built in. |
+| `clrex` (atomic or ordering) | Clears the exclusive monitor that a load-exclusive set. | Leaves an exclusive loop without storing: the compare-and-swap found the wrong value. |
+| `dmb` (atomic or ordering) | A data memory barrier: the accesses before it are ordered before the accesses after it, for the domain and kind named. | The fence of ch11 on AArch64; `dmb ish` is the full one a sequentially consistent store needs. |
+| `ldadd` (atomic or ordering) | Atomically adds a register to a memory word and returns the old value. An LSE instruction. | ch03's atomic increment in one instruction, where a core without LSE needs a loop of ldxr and stxr. |
+| `ldaxr` (atomic or ordering) | A load-exclusive with acquire ordering. | The load half of an exclusive pair, with ch08's acquire ordering: how a lock is taken. |
+| `ldxr` (atomic or ordering) | A load-exclusive: loads the word and marks the address, so a later store-exclusive succeeds only if nothing wrote it in between. | The load half of the pair that makes ch03's atomic increment and ch04's compare-and-swap without LSE. |
+| `stlxr` (atomic or ordering) | A store-exclusive with release ordering. | The store half of an exclusive pair, with ch08's release ordering: how a lock is released or a value published. |
+| `stxr` (atomic or ordering) | A store-exclusive: stores only if the address is still marked by the matching load-exclusive, and reports failure as one in a register. | The store half of the pair; a failure means another core wrote the word, and the loop goes round. |
+| `swpa` (atomic or ordering) | Atomically swaps a register with a memory word, with acquire ordering. An LSE instruction. | The test-and-set of ch05 in one instruction, with ch08's acquire ordering built in. |
+| `add` | Adds the last two operands into the first. | Register arithmetic between a load and a store: the middle of the three steps, or half of an address. |
+| `adrp` | Puts the address of a 4 KiB page into a register, the first half of forming an address. | Forms an address: how the code reaches a shared variable. |
+| `and` | Bitwise and into the first operand. | Arithmetic in a register: invisible to every other thread. |
+| `b` | Branches unconditionally. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `b.eq` | Branches if the last compare found the operands equal. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `b.ge` | Branches if the last compare found the first operand greater or equal, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `b.gt` | Branches if the last compare found the first operand greater, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `b.lt` | Branches if the last compare found the first operand less, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `b.ne` | Branches if the last compare found the operands unequal. | The back edge of a retry loop: the compare failed, so go round again. |
+| `b.pl` | Branches if the last result was not negative. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `cbnz` | Branches if the register is not zero. | The back edge of an exclusive retry loop: the store-exclusive failed, so load again. |
+| `cbz` | Branches if the register is zero. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `ccmp` | Compares only if the condition holds; otherwise sets the flags to the value given. | Arithmetic in a register: invisible to every other thread. |
+| `cmp` | Subtracts to set the flags, keeping no result. | The test of a spin or a retry: compares what was loaded with what was expected. |
+| `cset` | Sets a register to one if the condition holds, else zero. | Turns the outcome of a compare into the value the C function returns. |
+| `csetm` | Sets a register to all ones if the condition holds, else zero. | Arithmetic in a register: invisible to every other thread. |
+| `ldar` | A load with acquire ordering: no later access of this thread can be reordered before it. | The acquire load of ch08: the instruction a reader's side of a handover compiles to. |
+| `ldr` | Loads from memory into a register. | A load: the read half of a read-modify-write, and the moment this thread's view of the word is taken. |
+| `lsl` | Shifts left. | Arithmetic in a register: invisible to every other thread. |
+| `mov` | Copies a register or a constant into a register. | A register copy or a constant: invisible to every other thread. |
+| `orr` | Bitwise or into the first operand. | Arithmetic in a register: invisible to every other thread. |
+| `ret` | Returns from the function. | The end of the function; nothing here touches shared memory. |
+| `sbfiz` | Moves a bit field into position, extending the sign. | Arithmetic in a register: invisible to every other thread. |
+| `stlr` | A store with release ordering: no earlier access of this thread can be reordered after it. | The release store of ch08: the instruction a writer's side of a handover compiles to. |
+| `str` | Stores a register to memory. | A store: the write another thread may see, before or after its own, with nothing to say which. |
+| `sub` | Subtracts the last operand from the middle one into the first. | Arithmetic in a register: invisible to every other thread. |
+| `subs` | Subtracts and sets the flags. | Arithmetic in a register: invisible to every other thread. |
+| `sxtw` | Extends a 32-bit value to 64 bits with its sign. | Arithmetic in a register: invisible to every other thread. |
+| `tbnz` | Branches if the named bit of the register is not zero. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `tbz` | Branches if the named bit of the register is zero. | Control flow: what a retry loop, a spin or a wait is made of. |
 
 *The meanings are tools/mnemonics.py's, the dictionary that also gives every fragment its hover text. What an instruction costs, and how a core carries it out, is not stated: that is the microarchitecture's.*

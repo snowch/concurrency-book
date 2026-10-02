@@ -19,7 +19,7 @@
     { "name": "elapsed", "label": "Elapsed", "what": "for the largest worker count, from the start barrier opening to the last worker finishing" }
   ],
   "lowerings": [
-    { "name": "bump", "functions": ["bump_shared", "bump_own", "bump_plain"], "opt": "O2" }
+    { "name": "bump", "layer": "microarchitecture", "functions": ["bump_shared", "bump_own", "bump_plain"], "opt": "O2" }
   ],
   "native": { "args": "ITERATIONS COUNTERS", "example": "8 1000000 0", "results": ["every counter added up"] }
 }

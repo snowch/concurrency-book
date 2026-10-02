@@ -208,9 +208,12 @@ Product and vendor names appear only where the book describes a specific impleme
 behaviour (what clang 18 emits; what Chromium allows). The book never recommends a vendor.
 
 Every fragment carries a four-layer strip (language, compiler, instruction set,
-microarchitecture) and every mnemonic a hover meaning, both from `tools/mnemonics.py`; a kernel
-change that brings a new instruction into a fragment must add its meaning there, or the build
-fails. Appendix D is generated from the same dictionary.
+microarchitecture) with the layer the listing is evidence for set in relief; the contract names
+that layer per lowering (`"layer"`, `isa` by default) and a chapter can wrap one include in a
+`layer-<name>` div to argue from another. Every mnemonic carries two hover lines, what it does
+and why it matters here, from `tools/mnemonics.py`; a kernel change that brings a new
+instruction into a fragment must add its entry there, or the build fails. Appendix D is
+generated from the same dictionary.
 
 ## Things that break the build
 

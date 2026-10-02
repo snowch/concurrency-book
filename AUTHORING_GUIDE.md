@@ -164,6 +164,23 @@ kernel has it, and that it is incidental, in that order, and sends the reader to
 that teaches it if one exists. Only notes fold. A kernel, a fragment or a result in a note is a
 mistake: evidence is never optional.
 
+The strip under every fragment names the four layers and sets one in relief: the layer the
+listing is evidence for. The contract says which, per lowering, with `"layer": "compiler"`
+(or `language`, `isa`, `microarchitecture`; `isa` when absent). A chapter that argues from
+another layer around one include wraps it:
+
+````markdown
+:::{div}
+:class: layer-compiler
+```{include} _generated/counter-loop-x86-64.md
+```
+:::
+````
+
+Every mnemonic in a fragment carries two lines on hover, what it does and why it matters to a
+program with more than one thread, from `tools/mnemonics.py`; the legend in Appendix D has the
+same two columns. A new instruction in a fragment needs its entry there, or the build fails.
+
 Terms the first chapter needs are on the *Before you start* page; every other term is defined
 where the chapter that introduces it needs it, and the glossary says why the book needs it.
 

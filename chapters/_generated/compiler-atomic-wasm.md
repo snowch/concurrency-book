@@ -13,7 +13,7 @@ wait_atomic:
 ```
 
 :::{div}
-:class: layers
+:class: layers layer-compiler
 **Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O2, -matomics -mbulk-memory. **Instruction set** WebAssembly. **Microarchitecture** whichever core runs it; not shown here.
 :::
 

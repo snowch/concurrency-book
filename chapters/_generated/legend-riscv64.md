@@ -2,47 +2,47 @@
 
 *RISC-V (RV64): destination first, `0(a0)` is memory at the address in a0.*
 
-| Instruction | What it does |
-|---|---|
-| `amoadd.w` (atomic or ordering) | Atomically adds a register to a memory word and returns the old value. |
-| `amoadd.w.aqrl` (atomic or ordering) | The atomic add, with acquire and release ordering. |
-| `amoswap.w` (atomic or ordering) | Atomically swaps a register with a memory word. |
-| `amoswap.w.aq` (atomic or ordering) | The atomic swap, with acquire ordering. |
-| `fence` (atomic or ordering) | A fence: the kinds of access named before it complete before the kinds named after it. |
-| `lr.d.aq` (atomic or ordering) | Load-reserved of a 64-bit word, with acquire ordering. |
-| `lr.w` (atomic or ordering) | Load-reserved: loads a word and reserves the address for a store-conditional. |
-| `lr.w.aq` (atomic or ordering) | Load-reserved with acquire ordering. |
-| `sc.d` (atomic or ordering) | Store-conditional of a 64-bit word: stores only if the reservation still holds, and writes zero on success to a register. |
-| `sc.w` (atomic or ordering) | Store-conditional: stores only if the reservation from the load-reserved still holds, and writes zero on success or non-zero on failure to a register. |
-| `sc.w.rl` (atomic or ordering) | Store-conditional with release ordering. |
-| `add` | Adds two registers into a third. |
-| `addi` | Adds a constant to a register. |
-| `addiw` | Adds a constant to the low 32 bits and extends the sign of the result. |
-| `and` | Bitwise and of two registers. |
-| `andi` | Bitwise and with a constant. |
-| `auipc` | Adds a constant to the upper bits of the program counter, the first half of forming an address. |
-| `beq` | Branches if the two registers are equal. |
-| `beqz` | Branches if the register is zero. |
-| `bge` | Branches if the first register is greater or equal, as signed numbers. |
-| `bgez` | Branches if the register is not negative. |
-| `blez` | Branches if the register is zero or negative. |
-| `blt` | Branches if the first register is less, as signed numbers. |
-| `bne` | Branches if the two registers differ. |
-| `bnez` | Branches if the register is not zero. |
-| `j` | Jumps unconditionally. |
-| `ld` | Loads a 64-bit word from memory. |
-| `li` | Loads a constant into a register. |
-| `lw` | Loads a 32-bit word from memory. |
-| `mv` | Copies a register. |
-| `or` | Bitwise or of two registers. |
-| `ret` | Returns from the function. |
-| `sd` | Stores a 64-bit word to memory. |
-| `seqz` | Sets a register to one if the source is zero, else zero. |
-| `sext.w` | Extends the low 32 bits to 64 with their sign. |
-| `slli` | Shifts left by a constant. |
-| `srli` | Shifts right by a constant, filling with zeros. |
-| `subw` | Subtracts the low 32 bits and extends the sign of the result. |
-| `sw` | Stores a 32-bit word to memory. |
-| `xor` | Bitwise exclusive or of two registers. |
+| Instruction | What it does | Why it matters here |
+|---|---|---|
+| `amoadd.w` (atomic or ordering) | Atomically adds a register to a memory word and returns the old value. | ch03's atomic increment in one instruction. |
+| `amoadd.w.aqrl` (atomic or ordering) | The atomic add, with acquire and release ordering. | ch03's atomic increment with ch10's sequentially consistent ordering: acquire and release at once. |
+| `amoswap.w` (atomic or ordering) | Atomically swaps a register with a memory word. | The test-and-set of ch05 in one instruction. |
+| `amoswap.w.aq` (atomic or ordering) | The atomic swap, with acquire ordering. | The test-and-set of ch05 with ch08's acquire ordering built in: how a lock is taken. |
+| `fence` (atomic or ordering) | A fence: the kinds of access named before it complete before the kinds named after it. | The fence of ch11 on RISC-V; `fence rw,rw` is the full one. |
+| `lr.d.aq` (atomic or ordering) | Load-reserved of a 64-bit word, with acquire ordering. | The load half of a reserved pair, with ch08's acquire ordering. |
+| `lr.w` (atomic or ordering) | Load-reserved: loads a word and reserves the address for a store-conditional. | The load half of the pair that makes ch04's compare-and-swap on RISC-V. |
+| `lr.w.aq` (atomic or ordering) | Load-reserved with acquire ordering. | The load half of a reserved pair, with ch08's acquire ordering: how a lock is taken. |
+| `sc.d` (atomic or ordering) | Store-conditional of a 64-bit word: stores only if the reservation still holds, and writes zero on success to a register. | The store half of a reserved pair; a failure means another core wrote the word, and the loop goes round. |
+| `sc.w` (atomic or ordering) | Store-conditional: stores only if the reservation from the load-reserved still holds, and writes zero on success or non-zero on failure to a register. | The store half of the pair; a failure means another core wrote the word, and the loop goes round. |
+| `sc.w.rl` (atomic or ordering) | Store-conditional with release ordering. | The store half of a reserved pair, with ch08's release ordering: how a lock is released. |
+| `add` | Adds two registers into a third. | Arithmetic in a register: invisible to every other thread. |
+| `addi` | Adds a constant to a register. | Register arithmetic between a load and a store: the middle of the three steps. |
+| `addiw` | Adds a constant to the low 32 bits and extends the sign of the result. | Register arithmetic between a load and a store: the middle of the three steps. |
+| `and` | Bitwise and of two registers. | Arithmetic in a register: invisible to every other thread. |
+| `andi` | Bitwise and with a constant. | Arithmetic in a register: invisible to every other thread. |
+| `auipc` | Adds a constant to the upper bits of the program counter, the first half of forming an address. | Forms an address: how the code reaches a shared variable. |
+| `beq` | Branches if the two registers are equal. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `beqz` | Branches if the register is zero. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `bge` | Branches if the first register is greater or equal, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `bgez` | Branches if the register is not negative. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `blez` | Branches if the register is zero or negative. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `blt` | Branches if the first register is less, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `bne` | Branches if the two registers differ. | The back edge of a retry loop: the compare failed, so go round again. |
+| `bnez` | Branches if the register is not zero. | The back edge of a reserved retry loop: the store-conditional failed, so load again. |
+| `j` | Jumps unconditionally. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `ld` | Loads a 64-bit word from memory. | A load: the read half of a read-modify-write, and the moment this thread's view of the word is taken. |
+| `li` | Loads a constant into a register. | A register copy or a constant: invisible to every other thread. |
+| `lw` | Loads a 32-bit word from memory. | A load: the read half of a read-modify-write, and the moment this thread's view of the word is taken. |
+| `mv` | Copies a register. | A register copy or a constant: invisible to every other thread. |
+| `or` | Bitwise or of two registers. | Arithmetic in a register: invisible to every other thread. |
+| `ret` | Returns from the function. | The end of the function; nothing here touches shared memory. |
+| `sd` | Stores a 64-bit word to memory. | A store: the write another thread may see, before or after its own, with nothing to say which. |
+| `seqz` | Sets a register to one if the source is zero, else zero. | Turns the outcome of a store-conditional or a compare into the value the C function returns. |
+| `sext.w` | Extends the low 32 bits to 64 with their sign. | Arithmetic in a register: invisible to every other thread. |
+| `slli` | Shifts left by a constant. | Arithmetic in a register: invisible to every other thread. |
+| `srli` | Shifts right by a constant, filling with zeros. | Arithmetic in a register: invisible to every other thread. |
+| `subw` | Subtracts the low 32 bits and extends the sign of the result. | Arithmetic in a register: invisible to every other thread. |
+| `sw` | Stores a 32-bit word to memory. | A store: the write another thread may see, before or after its own, with nothing to say which. |
+| `xor` | Bitwise exclusive or of two registers. | Arithmetic in a register: invisible to every other thread. |
 
 *The meanings are tools/mnemonics.py's, the dictionary that also gives every fragment its hover text. What an instruction costs, and how a core carries it out, is not stated: that is the microarchitecture's.*

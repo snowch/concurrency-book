@@ -7,10 +7,13 @@ title: Reading the fragments
 
 Every listing in this book was written by the build from the kernel above it, by clang at the
 version and flags stated under it. This appendix is the legend: the notation of each instruction
-set, and the meaning of every instruction the listings use. The same meanings appear when you
-hover over an instruction in any listing, because both come from one dictionary in the
-repository, `tools/mnemonics.py`, and the build fails if a listing uses an instruction the
-dictionary does not know.
+set, and for every instruction the listings use, what it does and why it matters to a program
+with more than one thread. The second line is the one to read: a load is the moment a thread's
+view of a word is taken, a store is what another thread may see, an atomic read-modify-write is
+the step nothing can get between, and arithmetic in a register is invisible to everyone else.
+The same two lines appear when you hover over an instruction in any listing, because both come
+from one dictionary in the repository, `tools/mnemonics.py`, and the build fails if a listing
+uses an instruction the dictionary does not know.
 
 ## Four layers, every time
 
@@ -21,8 +24,10 @@ same one with other flags, may choose other instructions, which is why every lis
 *representative*. The **instruction set** is what each instruction means and what the
 architecture allows a core to reorder. The **microarchitecture** is the core that runs the
 instructions, with its caches and buffers; no listing shows it, and the timings in the
-experiments are its only trace. When a result surprises, the chapter names which of the four is
-responsible.
+experiments are its only trace. One of the four is set in relief: the layer the listing is evidence
+for, which is the instruction set unless the chapter is making a point about the compiler's
+choice, about what the C asked for, or about a cost that the instructions do not show. When a
+result surprises, the chapter names which of the four is responsible.
 
 ## x86-64
 

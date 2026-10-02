@@ -246,7 +246,9 @@ def test_every_generated_fragment_states_its_conditions():
             assert "mnemonics.py" in lines[-1], f"{path.name} says where the meanings come from"
         elif "lower.py" in lines[0]:
             assert "Representative" in lines[-1], f"{path.name} says the assembly is representative"
-            assert ":class: layers" in path.read_text(), f"{path.name} names its four layers"
+            assert re.search(
+                r":class: layers layer-(language|compiler|isa|microarchitecture)\b", path.read_text()
+            ), f"{path.name} names its four layers and the one it is evidence for"
         if "trace.mjs" in lines[0]:
             assert "not the compiled code" in lines[-1], f"{path.name} says a trace is a model"
 

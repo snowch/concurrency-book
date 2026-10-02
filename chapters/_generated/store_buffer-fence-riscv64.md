@@ -13,7 +13,7 @@ sb_fence_a:
 ```
 
 :::{div}
-:class: layers
+:class: layers layer-isa
 **Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O2, -march=rv64gc. **Instruction set** RISC-V. **Microarchitecture** whichever core runs it; not shown here.
 :::
 

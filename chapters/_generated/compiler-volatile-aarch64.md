@@ -10,7 +10,7 @@ wait_volatile:
 ```
 
 :::{div}
-:class: layers
+:class: layers layer-compiler
 **Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O2. **Instruction set** AArch64. **Microarchitecture** whichever core runs it; not shown here.
 :::
 

@@ -17,7 +17,7 @@ spin_acquire_ttas:
 ```
 
 :::{div}
-:class: layers
+:class: layers layer-isa
 **Language** C11, the kernel above. **Compiler** clang 18.1.3 at -O2. **Instruction set** x86-64, Intel syntax. **Microarchitecture** whichever core runs it; not shown here.
 :::
 

@@ -109,15 +109,18 @@ rest is how a function reaches its variable and returns. The notation:
 - Square brackets, `[x8, :lo12:counter]` or x86-64's `[rip + counter]`, mean the memory at that
   address; RISC-V writes the same as `0(a0)`. The variable lives in memory, and the instructions
   that touch memory are the ones concurrency is about.
-- Hover over any instruction for its one-line meaning. [Appendix D](#reading-the-fragments)
-  lists every instruction the book's listings use, with the same meanings.
+- Hover over any instruction for two lines: what it does, and why it matters to a program with
+  more than one thread. [Appendix D](#reading-the-fragments) lists every instruction the book's
+  listings use, with the same two lines.
 
 The strip under the listing names four layers, and every listing carries it. The **language** is
 the C above. The **compiler** is clang at the stated version and optimisation level; another
 compiler or flag may choose other instructions, so every listing says *representative*. The
 **instruction set** is what the instructions mean. The **microarchitecture** is the core that
-runs them, which no listing shows. The book keeps the four apart because a surprising result
-belongs to one of them, and a reader who knows which one can predict the next surprise.
+runs them, which no listing shows. One of the four is set in relief: the layer this listing is
+evidence for. The book keeps the four apart because a surprising result belongs to one of them,
+and the habit to form is to ask which layer you are talking about before asking what the
+processor does.
 
 ## How a chapter is laid out
 

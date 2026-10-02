@@ -130,14 +130,8 @@ def _asm_line(line: str, wasm: bool, target: str | None = None) -> str:
     if body:
         indent, mnemonic, rest = body.groups()
         cls = "tok-attr" if mnemonic.startswith(".") else "tok-keyword"
-        if wasm and ("atomic" in mnemonic or mnemonic.startswith("memory.")):
-            cls = "tok-keyword tok-atomic"
-        if not wasm and (
-            mnemonic in ("lock", "mfence", "dmb", "dsb", "isb", "fence")
-            or mnemonic.startswith(
-                ("ldxr", "stxr", "ldaxr", "stlxr", "ldadd", "ldar", "stlr", "cas", "swp", "amo", "lr.", "sc.")
-            )
-        ):
+        # The dictionary says which instructions the book quotes for atomicity or ordering.
+        if mnemonics.is_atomic(target or ("wasm" if wasm else None), mnemonic):
             cls = "tok-keyword tok-atomic"
         # A prefix such as x86-64's `lock` is followed by the instruction it modifies on the same
         # line; both carry their meaning, so a hover on either explains it.
@@ -159,9 +153,13 @@ def _asm_line(line: str, wasm: bool, target: str | None = None) -> str:
 
 
 def _title(target: str | None, mnemonic: str) -> str:
-    """A ``title`` attribute holding the instruction's one-line meaning, or nothing if unknown."""
+    """A ``title`` attribute holding what the instruction does and why it matters here, or
+    nothing if the dictionary does not know it."""
     meaning = mnemonics.describe(target, mnemonic)
-    return f' title="{html.escape(meaning)}"' if meaning else ""
+    if not meaning:
+        return ""
+    why = html.escape(mnemonics.why(target, mnemonic) or "")
+    return f' title="{html.escape(meaning)}&#10;Why it matters here: {why}"'
 
 
 def highlight(code: str, lang: str | None, target: str | None = None) -> str:

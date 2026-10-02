@@ -158,7 +158,7 @@ def fragment(exp: experiments.Experiment, lowering: experiments.Lowering, target
     # Under every listing, the four layers: a fragment is one compiler's lowering of the kernel
     # above for one instruction set, and says nothing about the core that runs it.
     layers = (
-        ":::{div}\n:class: layers\n"
+        f":::{{div}}\n:class: layers layer-{lowering.layer}\n"
         f"**Language** C11, the kernel above. **Compiler** clang {version} at -{lowering.opt}{extra}. "
         f"**Instruction set** {name}{syntax}. **Microarchitecture** whichever core runs it; not shown here.\n"
         ":::\n\n"

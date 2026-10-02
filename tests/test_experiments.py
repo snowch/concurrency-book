@@ -65,3 +65,19 @@ def test_a_bad_contract_is_refused(tmp_path, monkeypatch):
     monkeypatch.setattr(experiments, "EXPERIMENTS_DIR", tmp_path)
     with pytest.raises(experiments.ContractError):
         experiments.load("bad")
+
+
+def test_a_lowering_names_the_layer_its_listing_is_evidence_for():
+    """The strip under a fragment sets one layer in relief; the contract says which, and only
+    one of the book's four is allowed."""
+    from tools.experiments import LAYERS, load
+
+    counter = load("counter")
+    by_name = {lw.name: lw for lw in counter.lowerings}
+    assert by_name["increment"].layer == "isa", "the default"
+    assert by_name["loop"].layer == "compiler" and by_name["split"].layer == "language"
+    assert set(
+        lw.layer
+        for e in __import__("tools.experiments", fromlist=["available"]).available()
+        for lw in load(e).lowerings
+    ) <= set(LAYERS)
