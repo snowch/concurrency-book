@@ -46,7 +46,7 @@ export async function mount(shell) {
       const slowest = Math.max(...runs.map((r) => r.elapsedMs));
       for (const r of runs) shell.bar(bars, { value: r.elapsedMs, of: slowest, label: r.layout });
       shell.root.dataset.observed = String(runs.every((r) => r.observed === expected) ? expected : runs.find((r) => r.observed !== expected).observed);
-      shell.root.dataset.layouts = runs.map((r) => r.layout).join(",");
+      shell.root.dataset.layouts = runs.map((r) => r.layout).join(";");
       if (runs.length > 1) {
         const [a, , c] = runs;
         shell.root.dataset.ratio = (a.elapsedMs / Math.max(0.001, c.elapsedMs)).toFixed(2);

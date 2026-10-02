@@ -49,10 +49,13 @@ native/build/counter 4 1000000 1     # the same, atomic
 
 ## Status
 
-The laboratory, the build and the first three chapters (one increment, two threads, atomic
-operations) are in place and checked in a headless browser in three isolation configurations.
-The remaining chapters are planned in `tools/outline.py` and marked *planned* in the navigation;
-see `PLAN.md` for the plan and `NEXT_STEPS.md` for what comes next.
+Every chapter, appendix and experiment is in place: twenty-five chapters in six parts, three
+appendices, sixteen kernels. Each experiment runs live in Chromium, falls back to its
+deterministic trace where a browser withholds shared memory, and names the commands that run the
+same kernel on pthreads. CI checks the fragments against the pinned clang, the trace tables
+against the model, the prose against the rule that no measured number is typed by hand, and the
+experiments in a headless Chromium in three isolation configurations. Firefox and Safari have not
+been exercised yet; `NEXT_STEPS.md` has the list.
 
 ## Contributing
 

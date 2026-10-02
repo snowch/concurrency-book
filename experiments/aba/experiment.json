@@ -1,0 +1,27 @@
+{
+  "name": "aba",
+  "title": "The ABA problem",
+  "kernel": "aba.c",
+  "summary": "Every worker pops a node from a stack of three and pushes it back, round after round, so nodes leave and return while another worker is between its read of the head and its compare-and-swap. The page counts the pops that returned a node nobody had pushed.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 2, "max": 16, "default": 4 },
+    { "name": "rounds", "label": "Pop-and-push rounds per worker", "kind": "select", "options": [10000, 100000, 1000000], "default": 100000 },
+    { "name": "head", "label": "The head", "kind": "select", "options": ["plain", "tagged"], "default": "plain",
+      "hint": "plain: an index, compared and swapped alone. tagged: an index and a version counter, compared and swapped together as one 64-bit word." }
+  ],
+  "args": ["rounds", "head"],
+  "results": [
+    { "name": "pops", "label": "Pops", "what": "pops that returned a node, all workers" },
+    { "name": "corrupt", "label": "Not in the stack", "what": "pops that returned a node no push had put there: the head was swung to a node another worker held" },
+    { "name": "in_stack", "label": "In the stack at the end", "what": "nodes reachable from the head; three to start, and more than the pool has means the stack loops" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "aba", "what": "the classic interleaving: a thread reads the head and the node below, the world changes and changes back, and its compare-and-swap succeeds" },
+  "lowerings": [
+    { "name": "pop", "functions": ["pop"], "opt": "O2", "targets": ["x86-64", "aarch64-lse", "wasm"] },
+    { "name": "tagged", "functions": ["pop_tagged"], "opt": "O2", "targets": ["wasm", "x86-64", "aarch64", "aarch64-lse", "riscv64"] }
+  ],
+  "native": { "args": "ROUNDS HEAD", "example": "4 100000 0", "results": ["pops", "pops of a node not in the stack", "nodes in the stack at the end"] }
+}

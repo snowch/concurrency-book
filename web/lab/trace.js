@@ -27,6 +27,10 @@
 //   { op: "jmp", to }                        jump to op `to`
 //   { op: "wait", var, expect }              sleep while memory[var] == expect, until a notify
 //   { op: "notify", var, one? }              wake every thread (or one) sleeping on var
+//   { op: "loadi", reg, base, index }        reg <- memory[base + the number in register index]
+//   { op: "storei", base, index, reg|imm }   memory[base + the number in register index] <- value
+//   { op: "cas2", vars: [a, b], expect: [ea, eb], values: [va, vb], out }
+//                                            compare two words and swap both, as one step
 //   { op: "note", text }                     a step that changes nothing, for the reader
 // An atomic operation (rmw_add, xchg, cas) drains the thread's own buffer first, as a locked
 // instruction does on x86-64.
@@ -172,6 +176,30 @@ export class Machine {
           const woken = op.one ? sleepers.slice(0, 1) : sleepers;
           for (const o of woken) o.asleep = null;
           text = `notify ${op.var}: ${woken.length ? woken.map((o) => o.name).join(", ") + " woken" : "nobody asleep"}`;
+          break;
+        }
+        case "loadi": {
+          const name = op.base + (t.regs[op.index] ?? 0);
+          t.regs[op.reg] = this.memory[name] ?? 0;
+          text = `${op.reg} = load ${name}`;
+          break;
+        }
+        case "storei": {
+          const name = op.base + (t.regs[op.index] ?? 0);
+          const v = value(op.reg !== undefined ? op.reg : op.imm);
+          this.memory[name] = v;
+          text = `store ${name} = ${v}`;
+          break;
+        }
+        case "cas2": {
+          while (t.buffer.length) this.#drainOne(t);
+          const [a, b] = op.vars;
+          const [ea, eb] = op.expect.map(value);
+          const ok = this.memory[a] === ea && this.memory[b] === eb;
+          const [va, vb] = op.values.map(value);
+          if (ok) { this.memory[a] = va; this.memory[b] = vb; }
+          t.regs[op.out] = ok ? 1 : 0;
+          text = `cas ${a},${b}: expect ${ea},${eb}, new ${va},${vb} -> ${ok ? "ok" : "failed"}`;
           break;
         }
         case "note":

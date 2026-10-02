@@ -1,0 +1,25 @@
+{
+  "name": "contention",
+  "title": "The same work, on one word or on many",
+  "kernel": "contention.c",
+  "summary": "Every worker makes the same number of increments, on one shared atomic counter, on an atomic counter of its own on its own cache line, or on a plain counter of its own. The page runs one worker, then two, then more, and draws the rate.",
+  "requires": { "threads": true },
+  "modes": ["live", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers, up to", "kind": "range", "min": 1, "max": 16, "default": 8 },
+    { "name": "iterations", "label": "Increments per worker", "kind": "select", "options": [100000, 1000000], "default": 1000000 },
+    { "name": "layout", "label": "Counters", "kind": "select",
+      "options": ["compare", "one shared", "one each", "one each, plain"], "default": "compare",
+      "hint": "compare runs all three. one shared: every worker on one atomic counter. one each: an atomic counter per worker, a line apart. one each, plain: a plain counter per worker, a line apart." }
+  ],
+  "args": ["iterations", "layout"],
+  "results": [
+    { "name": "observed", "label": "Observed", "what": "every counter added up, for the largest worker count" },
+    { "name": "rate", "label": "Increments per millisecond", "what": "for each worker count, the total increments divided by the wall time" },
+    { "name": "elapsed", "label": "Elapsed", "what": "for the largest worker count, from the start barrier opening to the last worker finishing" }
+  ],
+  "lowerings": [
+    { "name": "bump", "functions": ["bump_shared", "bump_own", "bump_plain"], "opt": "O2" }
+  ],
+  "native": { "args": "ITERATIONS COUNTERS", "example": "8 1000000 0", "results": ["every counter added up"] }
+}

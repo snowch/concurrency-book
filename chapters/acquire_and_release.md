@@ -86,8 +86,8 @@ Try these, in order:
 The writer's two stores go to two different addresses, and nothing in a plain or volatile store
 ties them together. The compiler may emit them in either order, since to a single thread the
 order of two stores to different variables is invisible. The processor may make them visible to
-other cores in either order, for the same reason: a store buffer, a write-combining buffer or
-simply two cache lines arriving at different times. The reader's two loads are the same story
+other cores in either order, for the same reason: a store buffer, a write-combining buffer, or
+two cache lines arriving at different times. The reader's two loads are the same story
 in mirror image: a weakly ordered processor may perform the load of the data before the load of
 the flag, and return a value that was true before the flag was raised.
 

@@ -1,0 +1,27 @@
+{
+  "name": "reclamation",
+  "title": "Reclaiming a record readers may hold",
+  "kernel": "reclamation.c",
+  "summary": "A writer publishes new records and retires old ones while readers follow the pointer and read. Retiring at once lets a reader read a reused record, which the kernel makes visible by poisoning it; a hazard pointer per reader lets the writer wait.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "readers", "label": "Readers", "kind": "range", "min": 1, "max": 8, "default": 3 },
+    { "name": "updates", "label": "Updates by the writer", "kind": "select", "options": [10000, 100000, 1000000], "default": 100000 },
+    { "name": "protection", "label": "Protection", "kind": "select", "options": ["none", "hazard pointers"], "default": "none",
+      "hint": "none: the writer poisons the old record as soon as it has published the new one. hazard pointers: each reader announces the record it reads, and the writer waits until nobody announces the old one." }
+  ],
+  "args": ["updates", "protection", "readers"],
+  "results": [
+    { "name": "reads", "label": "Reads", "what": "reads made, all readers" },
+    { "name": "poisoned", "label": "Poisoned reads", "what": "reads that found a record the writer had already retired" },
+    { "name": "waits", "label": "Writer waits", "what": "times the writer found a hazard on the record it wanted to retire" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "reclamation", "what": "a model of one writer and one reader, with and without a hazard pointer" },
+  "lowerings": [
+    { "name": "read", "functions": ["read_unprotected", "read_with_hazard"], "opt": "O2" },
+    { "name": "update", "functions": ["update"], "opt": "O2", "targets": ["x86-64", "aarch64", "wasm"] }
+  ],
+  "native": { "args": "UPDATES PROTECTION READERS", "example": "4 100000 0 3", "results": ["reads", "poisoned reads", "updates", "writer waits"] }
+}

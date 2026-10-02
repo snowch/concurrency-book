@@ -234,12 +234,62 @@ async function exerciseCounter(page, base, label) {
   // ch12 and ch13: every layout counts exactly, and the comparison runs three layouts.
   await page.goto(base + "cache-coherence.html");
   lab = await settled(0);
-  check(num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")) && (await lab.getAttribute("data-layouts")).split(",").length === 3,
+  check(num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")) && (await lab.getAttribute("data-layouts")).split(";").length === 3,
     `ch12 compare: three layouts, every count exact (same word took ${await lab.getAttribute("data-ratio")} times as long as a line each here)`);
   await page.goto(base + "false-sharing.html");
   lab = await settled(1);
   check(await lab.getAttribute("data-layout") === "own line" && num(await lab.getAttribute("data-observed")) === num(await lab.getAttribute("data-expected")), "ch13 own line: exact");
   check(errors.length === 0, `no page errors on ch08 to ch15${errors.length ? ": " + errors.join(" | ") : ""}`);
+  // ch16: the compare-and-swap stack accounts for every node; the broken pop need not.
+  await page.goto(base + "lock-free-stack.html");
+  lab = await settled(0);
+  check(num(await lab.getAttribute("data-twice")) === 0 && num(await lab.getAttribute("data-lost")) === 0, `ch16 cas: ${await lab.getAttribute("data-popped")} popped, none twice, none lost`);
+  lab = await settled(1);
+  check(await lab.getAttribute("data-operation") === "broken" && num(await lab.getAttribute("data-lost")) >= 0, `ch16 broken: ${await lab.getAttribute("data-twice")} popped twice, ${await lab.getAttribute("data-lost")} lost (whatever this device allows)`);
+  await lab.locator('.lab-modes button[data-mode="trace"]').click();
+  await lab.locator(".stepper button", { hasText: "Run to the end" }).click();
+  check((await lab.locator(".stepper").getAttribute("data-trace-outcome")).includes("two owners"), "ch16 trace: the broken pop gives one node two owners");
+  // ch17: the tagged head never pops a node that was not in the stack.
+  await page.goto(base + "the-aba-problem.html");
+  lab = await settled(0);
+  check(num(await lab.getAttribute("data-pops")) > 0, `ch17 plain: ${await lab.getAttribute("data-corrupt")} pops of a node not in the stack (whatever this device allows)`);
+  lab = await settled(1);
+  check(await lab.getAttribute("data-head") === "tagged" && num(await lab.getAttribute("data-corrupt")) === 0 && num(await lab.getAttribute("data-in_stack")) === 3, "ch17 tagged: none, and three nodes at the end");
+  // ch18 and ch20: protection stops every poisoned read.
+  await page.goto(base + "memory-reclamation.html");
+  lab = await settled(1);
+  check(await lab.getAttribute("data-protection") === "hazard pointers" && num(await lab.getAttribute("data-poisoned")) === 0, `ch18 hazard pointers: no poisoned read in ${await lab.getAttribute("data-reads")}`);
+  await page.goto(base + "rcu.html");
+  lab = await settled(1);
+  check(num(await lab.getAttribute("data-poisoned")) === 0 && num(await lab.getAttribute("data-waits")) >= 0, `ch20 grace period: no poisoned read in ${await lab.getAttribute("data-reads")}, ${await lab.getAttribute("data-waits")} waits`);
+  // ch19: sequenced slots deliver every item once and in order.
+  await page.goto(base + "lock-free-queue.html");
+  lab = await settled(1);
+  check(await lab.getAttribute("data-step") === "sequenced slots" && num(await lab.getAttribute("data-unwritten")) === 0 && num(await lab.getAttribute("data-disordered")) === 0 && num(await lab.getAttribute("data-duplicated")) === 0,
+    `ch19 sequenced: ${await lab.getAttribute("data-dequeued")} dequeued, none unwritten, none out of order, none twice`);
+  check(errors.length === 0, `no page errors on ch16 to ch20${errors.length ? ": " + errors.join(" | ") : ""}`);
+  // ch21: the sweep runs three layouts at several worker counts, every count exact, with a chart each.
+  await page.goto(base + "contention-and-scalability.html");
+  lab = await settled(0);
+  check(await lab.getAttribute("data-exact") === "true" && (await lab.getAttribute("data-layouts")).split(";").length === 3 && await lab.locator("figure.chart svg").count() === 3,
+    `ch21: three layouts over workers ${await lab.getAttribute("data-counts")}, every count exact; one shared counter's rate fell ${await lab.getAttribute("data-shared-ratio")} times from one worker to the most`);
+  // ch22: every round trip completes, sleeping or spinning.
+  await page.goto(base + "webassembly-threads.html");
+  lab = await settled(0);
+  check(num(await lab.getAttribute("data-rounds")) === 10000 && num(await lab.getAttribute("data-spins")) === 0, `ch22 sleep and wake: 10000 round trips, ${await lab.getAttribute("data-sleeps")} sleeps, ${await lab.getAttribute("data-per_round")} ns each`);
+  await lab.locator('select[name="waiting"]').selectOption("spin");
+  lab = await settled(0, "waiting=spin");
+  check(num(await lab.getAttribute("data-rounds")) === 10000 && num(await lab.getAttribute("data-sleeps")) === 0, `ch22 spin: 10000 round trips, ${await lab.getAttribute("data-per_round")} ns each`);
+  // ch23 and ch24 reuse the counter; ch25's office as written oversells, and by compare-and-swap never.
+  await page.goto(base + "diagnose-the-race.html");
+  lab = await settled(0);
+  check(num(await lab.getAttribute("data-booked")) >= num(await lab.getAttribute("data-capacity")), `ch25 as written: oversold by ${await lab.getAttribute("data-oversold")} (whatever this device allows)`);
+  lab = await settled(1);
+  check(await lab.getAttribute("data-version") === "compare-and-swap" && num(await lab.getAttribute("data-oversold")) === 0, "ch25 compare-and-swap: nothing oversold");
+  await lab.locator('.lab-modes button[data-mode="trace"]').click();
+  await lab.locator(".stepper button", { hasText: "Run to the end" }).click();
+  check((await lab.locator(".stepper").getAttribute("data-trace-outcome")).includes("one booking"), "ch25 trace: by compare-and-swap, one seat, one booking");
+  check(errors.length === 0, `no page errors on ch21 to ch25${errors.length ? ": " + errors.join(" | ") : ""}`);
   await context.close();
   server.close();
 }

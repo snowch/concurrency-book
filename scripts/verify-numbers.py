@@ -34,14 +34,19 @@ UNIT = (
     r"(?:bytes?|B|KB|KiB|MB|MiB|GB|GiB|ms|ns|µs|us|seconds?|increments?|updates?|workers?|threads?"
     r"|cores?|iterations?|runs?|retries|times|cycles?|instructions?)"
 )
-WITH_UNIT = re.compile(rf"(?<![\w.])\d[\d,._]*\s*{UNIT}\b")
+#: A short unit may follow its number directly (64KB, 20ms); a word of a unit needs a space,
+#: so that a name such as 1024cores is not a count of cores.
+SHORT_UNIT = r"(?:B|KB|KiB|MB|MiB|GB|GiB|ms|ns|µs|us)"
+WITH_UNIT = re.compile(rf"(?<![\w.])\d[\d,._]*(?:\s+{UNIT}|\s*{SHORT_UNIT})\b")
 BARE = re.compile(r"(?<![\w.#/-])\d{2,}(?![\w-])")
 ALLOWED_BARE = re.compile(r"^(?:19|20)\d\d$|^(?:16|32|64|128)$")  # a year, or a width in bits
 INLINE_CODE = re.compile(r"`[^`]*`")
 LINK_TARGET = re.compile(r"\]\([^)]*\)")
 CITATION = re.compile(
-    r"\b(?:RFC|section|ch|Appendix|Part|C|C\+\+|x86-|x86_|RISC-V|armv|Armv)\s*-?\d+", re.IGNORECASE
+    r"\b(?:RFC|section|ch|Appendix|Part|C|C\+\+|x86-|x86_|RISC-V|armv|Armv|RJ|RC|Report|volume|PLDI|ISCA|POPL|OOPSLA|PODC|VLDB)\s*-?\d+",
+    re.IGNORECASE,
 )
+
 #: Architecture names and standards that carry digits: x86-64, AArch64, C11, RV64; and the
 #: versions of the tools the book pins, which are names of a kind too: clang 18, Node.js 22.
 NAMES = re.compile(

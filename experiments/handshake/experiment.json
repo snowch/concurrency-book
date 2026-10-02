@@ -1,0 +1,28 @@
+{
+  "name": "handshake",
+  "title": "A handshake: ping, pong",
+  "kernel": "handshake.c",
+  "summary": "Two workers take turns: one says ping, the other answers pong, round after round, waiting for each other by sleeping and waking or by spinning. The time per round trip is the cost of a wake-up.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 2, "max": 2, "default": 2 },
+    { "name": "rounds", "label": "Round trips", "kind": "select", "options": [1000, 10000, 100000], "default": 10000 },
+    { "name": "waiting", "label": "Waiting by", "kind": "select", "options": ["sleep and wake", "spin"], "default": "sleep and wake",
+      "hint": "sleep and wake: memory.atomic.wait32 and memory.atomic.notify. spin: a loop on the word." }
+  ],
+  "args": ["rounds", "waiting"],
+  "results": [
+    { "name": "rounds", "label": "Round trips", "what": "ping and pong, completed" },
+    { "name": "sleeps", "label": "Sleeps", "what": "times a worker went to sleep on a word" },
+    { "name": "spins", "label": "Spins", "what": "iterations spent spinning on a word" },
+    { "name": "per_round", "label": "Per round trip", "what": "the wall time divided by the round trips" },
+    { "name": "elapsed", "label": "Elapsed", "what": "all round trips, from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "handshake", "what": "a model of the two workers, where a waiting worker sleeps until the other's notify" },
+  "lowerings": [
+    { "name": "sleeping", "functions": ["await_sleeping", "say"], "opt": "O2", "targets": ["wasm"] },
+    { "name": "spinning", "functions": ["await_spinning"], "opt": "O2" }
+  ],
+  "native": { "args": "ROUNDS WAITING", "example": "2 10000 0", "results": ["round trips", "sleeps", "spins"] }
+}

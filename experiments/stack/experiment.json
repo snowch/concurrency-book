@@ -1,0 +1,30 @@
+{
+  "name": "stack",
+  "title": "A lock-free stack",
+  "kernel": "stack.c",
+  "summary": "Every worker pushes its own nodes onto one shared stack and then pops as many as it can; the page accounts for every node, and counts the ones popped twice or lost when the pop is not a compare-and-swap.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 1, "max": 16, "default": 4 },
+    { "name": "nodes", "label": "Nodes per worker", "kind": "select", "options": [100, 1000, 4000], "default": 4000 },
+    { "name": "operation", "label": "Pop", "kind": "select", "options": ["cas", "broken"], "default": "cas",
+      "hint": "cas: read the top and the node below, swing the head by compare-and-swap. broken: read, then store the head, in two steps." }
+  ],
+  "args": ["nodes", "operation"],
+  "results": [
+    { "name": "pushed", "label": "Pushed", "what": "workers times nodes per worker" },
+    { "name": "popped", "label": "Popped", "what": "pops that returned a node, all workers" },
+    { "name": "remaining", "label": "Still in the stack", "what": "nodes reachable from the head when every worker has finished" },
+    { "name": "twice", "label": "Popped twice", "what": "nodes that more than one pop returned" },
+    { "name": "lost", "label": "Lost", "what": "nodes neither popped nor in the stack" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "stack", "what": "a model of two threads popping from a stack of three nodes" },
+  "lowerings": [
+    { "name": "push", "functions": ["push"], "opt": "O2" },
+    { "name": "pop", "functions": ["pop"], "opt": "O2", "targets": ["wasm", "x86-64", "aarch64", "aarch64-lse", "riscv64"] },
+    { "name": "broken", "functions": ["pop_broken"], "opt": "O2" }
+  ],
+  "native": { "args": "NODES POP", "example": "4 4000 0", "results": ["popped", "still in the stack", "popped twice", "popped once", "pops that found it empty"] }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "rcu",
+  "title": "Read-copy-update",
+  "kernel": "rcu.c",
+  "summary": "Readers follow a pointer and read the record with no atomic read-modify-write and no announcement; the writer publishes a new record and waits for a grace period, until every reader has passed a quiescent state, before reusing the old one.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "readers", "label": "Readers", "kind": "range", "min": 1, "max": 8, "default": 3 },
+    { "name": "updates", "label": "Updates by the writer", "kind": "select", "options": [10000, 100000, 1000000], "default": 100000 },
+    { "name": "grace", "label": "Before reuse, the writer", "kind": "select", "options": ["reuses at once", "waits for a grace period"], "default": "reuses at once" }
+  ],
+  "args": ["updates", "grace", "readers"],
+  "results": [
+    { "name": "reads", "label": "Reads", "what": "reads made, all readers" },
+    { "name": "poisoned", "label": "Poisoned reads", "what": "reads that found a record the writer had already reused" },
+    { "name": "waits", "label": "Grace-period waits", "what": "times the writer found a reader that had not yet passed a quiescent state" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "rcu", "what": "a model of one writer and one reader, with the writer waiting for the reader's quiescent state" },
+  "lowerings": [
+    { "name": "read", "functions": ["rcu_read", "rcu_quiescent"], "opt": "O2" },
+    { "name": "update", "functions": ["rcu_update"], "opt": "O2", "targets": ["x86-64", "aarch64", "wasm"] }
+  ],
+  "native": { "args": "UPDATES GRACE READERS", "example": "4 100000 1 3", "results": ["reads", "poisoned reads", "updates", "grace-period waits"] }
+}

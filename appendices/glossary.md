@@ -7,6 +7,8 @@ title: Glossary
 
 Each term is defined where a chapter first uses it; this is the list, with the chapter.
 
+**ABA.** A compare-and-swap that succeeds because the word holds the value it held before, after it changed and changed back; for a pointer, a different object at the same address. [ch17](#the-aba-problem)
+
 **Acquire.** An ordering on a load: nothing this thread does after the load may be seen before
 it. Paired with a release, it completes a handover. [ch08](#acquire-and-release)
 
@@ -16,11 +18,15 @@ not happened or it has, never half. [ch03](#atomic-operations)
 **Cache line.** The unit a cache holds and the coherence protocol moves: sixty-four bytes on
 every target the book names. [ch12](#cache-coherence)
 
+**Check-then-act.** A decision made from a value read earlier, acted on after other threads may have changed it: the shape of the booking office's bug. [ch25](#diagnose-the-race)
+
 **Coherence.** The property that every core sees the stores to one variable in one order, kept
 by the protocol between the caches. [ch12](#cache-coherence)
 
 **Compare-and-swap.** An atomic operation that stores a new value only if the word still holds
 the value expected, and reports which happened. [ch04](#compare-and-swap)
+
+**Cross-origin isolation.** The state a browser requires of a page before it will give it shared memory, set by two response headers; the book's service worker provides them. [ch22](#webassembly-threads)
 
 **Data race.** Two threads accessing the same variable, at least one writing, with nothing to
 order them. In C it is undefined behaviour; in WebAssembly it has a defined but weak meaning.
@@ -32,8 +38,14 @@ protocol moves between the cores as if the variables were shared. [ch13](#false-
 **Fence.** An instruction that orders this thread's accesses before it against those after it,
 as other threads see them, touching no variable. [ch11](#fences)
 
+**Grace period.** The wait, after a writer publishes a new record, until every reader that might have been reading the old one has finished. [ch20](#rcu)
+
 **Happens-before.** The relationship between a store and a load that is guaranteed to see it,
 created by a release store read by an acquire load. [ch08](#acquire-and-release)
+
+**Hazard pointer.** A word per reader naming the record it is about to read, which a writer checks before reusing a record. [ch18](#memory-reclamation)
+
+**Lock-free.** A structure some thread always makes progress on, whatever the others do: no lock, and no thread can block the rest by stopping. [ch16](#lock-free-stack)
 
 **Lost update.** An increment that another thread's store overwrote: both read the same old
 value, both wrote the same new one. [ch02](#two-threads-one-variable)
@@ -45,6 +57,8 @@ sleeps on a lock that is free. A wait that compares before sleeping prevents it.
 **Mutex.** A lock whose waiters stop running until a release wakes one.
 [ch06](#from-spinlock-to-mutex)
 
+**Quiescent state.** A point where a reader holds no reference to any record, which it marks for the writer; a grace period ends when every reader has passed one. [ch20](#rcu)
+
 **Read-modify-write.** An operation that reads a value, computes from it and writes the result.
 Plain, it is three steps; atomic, it is one. [ch01](#what-x-plus-plus-does)
 
@@ -53,6 +67,10 @@ variable, and nothing about any other variable. [ch09](#relaxed-atomics)
 
 **Release.** An ordering on a store: nothing this thread did before the store may be seen after
 it. [ch08](#acquire-and-release)
+
+**Ring buffer.** A fixed array of slots used as a queue, with a head and a tail that wrap around. [ch19](#lock-free-queue)
+
+**Scalability.** How the rate of work changes as workers are added; a shared word's rate falls, a word per worker's holds. [ch21](#contention-and-scalability)
 
 **Sequential consistency.** One order of every thread's operations, each in program order, every
 load seeing the last store before it. The strongest ordering, and the default.

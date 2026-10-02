@@ -1,0 +1,30 @@
+{
+  "name": "challenge",
+  "title": "The booking office",
+  "kernel": "challenge.c",
+  "summary": "Workers book seats from a shared count until the office refuses, confirming each booking first. The office as written sells seats it does not have; three other versions try to fix it, and two succeed.",
+  "requires": { "threads": true },
+  "modes": ["live", "trace", "native"],
+  "controls": [
+    { "name": "workers", "label": "Workers", "kind": "range", "min": 1, "max": 16, "default": 4 },
+    { "name": "seats", "label": "Seats on sale", "kind": "select", "options": [1000, 10000, 100000], "default": 100000 },
+    { "name": "steps", "label": "Busy steps to confirm a booking", "kind": "select", "options": [0, 100, 1000], "default": 100 },
+    { "name": "version", "label": "The office", "kind": "select",
+      "options": ["as written", "with atomics", "compare-and-swap", "under a lock"], "default": "as written",
+      "hint": "as written: a plain check and a plain decrement. with atomics: an atomic check and an atomic decrement. compare-and-swap: take the seat only if the count is unchanged. under a lock: check and take with nobody else inside." }
+  ],
+  "args": ["seats", "version", "steps"],
+  "results": [
+    { "name": "capacity", "label": "Seats on sale", "what": "the capacity" },
+    { "name": "booked", "label": "Booked", "what": "seats booked, all workers" },
+    { "name": "oversold", "label": "Oversold", "what": "booked minus the seats on sale" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "trace": { "program": "challenge", "what": "a model of two workers and the last seat" },
+  "lowerings": [
+    { "name": "check", "functions": ["book_as_written", "book_with_atomics"], "opt": "O2" },
+    { "name": "cas", "functions": ["book_with_cas"], "opt": "O2" },
+    { "name": "lock", "functions": ["book_under_lock"], "opt": "O2", "targets": ["x86-64", "aarch64", "wasm"] }
+  ],
+  "native": { "args": "SEATS VERSION STEPS", "example": "4 100000 0 100", "results": ["seats on sale", "booked", "seats left"] }
+}

@@ -155,6 +155,86 @@ if (!isMainThread) {
     }
   }
 
+  // stack: the compare-and-swap pop accounts for every node; the broken one need not.
+  {
+    const stack = bytes("stack");
+    const cas = await runKernel(stack, { workers: 4, args: [4000, 0, 0] });
+    const [popped, remaining, twice, once] = cas.results;
+    check(twice === 0 && once + remaining === 16000 && popped === once, `stack cas: ${popped} popped, ${remaining} left, none twice, none lost`);
+    const broken = await runKernel(stack, { workers: 4, args: [4000, 1, 0] });
+    const lost = 16000 - broken.results[3] - broken.results[2] - broken.results[1];
+    check(lost >= 0 && broken.results[2] >= 0, `stack broken: ${broken.results[2]} popped twice, ${lost} lost (whatever this host allows)`);
+  }
+
+  // aba: the tagged head never pops a node that was not in the stack and keeps its three nodes.
+  {
+    const aba = bytes("aba");
+    const plain = await runKernel(aba, { workers: 4, args: [100000, 0, 0] });
+    check(plain.results[0] > 0, `aba plain: ${plain.results[1]} pops of a node not in the stack in ${plain.results[0]} (whatever this host allows); ${plain.results[2]} in the stack at the end`);
+    const tagged = await runKernel(aba, { workers: 4, args: [100000, 1, 0] });
+    check(tagged.results[1] === 0 && tagged.results[2] === 3, `aba tagged: no pop of a node not in the stack in ${tagged.results[0]}; three nodes at the end`);
+  }
+
+  // reclamation and rcu: with protection, no reader ever reads a reused record.
+  {
+    const rec = bytes("reclamation");
+    const none = await runKernel(rec, { workers: 4, args: [100000, 0, 3] });
+    check(none.results[0] > 0 && none.results[2] === 100000, `reclamation none: ${none.results[1]} poisoned reads of ${none.results[0]} (whatever this host allows)`);
+    const hazard = await runKernel(rec, { workers: 4, args: [100000, 1, 3] });
+    check(hazard.results[1] === 0 && hazard.results[2] === 100000, `reclamation hazard pointers: no poisoned read in ${hazard.results[0]}; the writer waited ${hazard.results[3]} times`);
+    const rcu = bytes("rcu");
+    const now = await runKernel(rcu, { workers: 4, args: [100000, 0, 3] });
+    check(now.results[2] === 100000, `rcu reuses at once: ${now.results[1]} poisoned reads of ${now.results[0]} (whatever this host allows)`);
+    const grace = await runKernel(rcu, { workers: 4, args: [100000, 1, 3] });
+    check(grace.results[1] === 0 && grace.results[2] === 100000, `rcu grace period: no poisoned read in ${grace.results[0]}; the writer waited ${grace.results[3]} times`);
+  }
+
+  // queue: sequenced slots deliver every item once and in order; the other designs need not.
+  {
+    const queue = bytes("queue");
+    const good = await runKernel(queue, { workers: 4, args: [50000, 2, 2], timeoutMs: 60000 });
+    const [enq, deq, unwritten, disordered, dup, dropped] = good.results;
+    check(deq - unwritten + dropped === 100000 && unwritten === 0 && disordered === 0 && dup === 0 && enq + dropped === 100000,
+      `queue sequenced: ${deq} dequeued of ${enq}, none unwritten, none out of order, none twice, ${dropped} dropped`);
+    for (const [name, b] of [["one-to-one ring", 0], ["claimed positions", 1]]) {
+      const r = await runKernel(queue, { workers: 4, args: [50000, b, 2], timeoutMs: 60000 });
+      check(r.results.every((x) => x >= 0), `queue ${name}: ${r.results[2]} unwritten slots, ${r.results[3]} out of order, ${100000 - (r.results[1] - r.results[2]) - r.results[5]} lost (whatever this host allows)`);
+    }
+  }
+
+  // contention: every layout counts exactly at every worker count.
+  {
+    const contention = bytes("contention");
+    for (const layout of [0, 1, 2]) {
+      for (const workers of [1, 4]) {
+        const r = await runKernel(contention, { workers, args: [200000, layout, 0] });
+        check(r.results[0] === workers * 200000, `contention layout ${layout}, ${workers} worker(s): ${r.results[0]} (exact; ${r.elapsedMs.toFixed(1)} ms)`);
+      }
+    }
+  }
+
+  // handshake: every round trip completes; sleeping never spins and spinning never sleeps.
+  {
+    const hs = bytes("handshake");
+    const sleep = await runKernel(hs, { workers: 2, args: [2000, 0, 0], timeoutMs: 60000 });
+    check(sleep.results[0] === 2000 && sleep.results[2] === 0, `handshake sleep and wake: 2000 round trips, ${sleep.results[1]} sleeps, no spins (${(1e6 * sleep.elapsedMs / 2000).toFixed(0)} ns per round trip)`);
+    const spin = await runKernel(hs, { workers: 2, args: [2000, 1, 0] });
+    check(spin.results[0] === 2000 && spin.results[1] === 0, `handshake spin: 2000 round trips, ${spin.results[2]} spins, no sleeps (${(1e6 * spin.elapsedMs / 2000).toFixed(0)} ns per round trip)`);
+  }
+
+  // challenge: compare-and-swap and the lock never oversell; the others are the host's.
+  {
+    const ch = bytes("challenge");
+    for (const [name, b] of [["as written", 0], ["with atomics", 1]]) {
+      const r = await runKernel(ch, { workers: 4, args: [100000, b, 100] });
+      check(r.results[0] === 100000 && r.results[1] >= 100000, `challenge ${name}: ${r.results[1]} booked of 100000 (oversold by ${r.results[1] - 100000}; whatever this host allows)`);
+    }
+    for (const [name, b] of [["compare-and-swap", 2], ["under a lock", 3]]) {
+      const r = await runKernel(ch, { workers: 4, args: [100000, b, 100] });
+      check(r.results[1] === 100000 && r.results[2] === 0, `challenge ${name}: exactly 100000 booked, none left`);
+    }
+  }
+
   console.log(failures ? `${failures} failure(s)` : "every kernel reports what its contract promises");
   process.exit(failures ? 1 : 0);
 }

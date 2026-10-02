@@ -1,0 +1,31 @@
+{
+  "name": "queue",
+  "title": "A bounded queue for many producers and consumers",
+  "kernel": "queue.c",
+  "summary": "Producers enqueue numbered items and consumers dequeue them through a ring of slots, built up in three steps: a ring for one of each, positions claimed by compare-and-swap, and a sequence number per slot. The page checks every item arrived once and in its producer's order.",
+  "requires": { "threads": true },
+  "modes": ["live", "native"],
+  "controls": [
+    { "name": "producers", "label": "Producers", "kind": "range", "min": 1, "max": 8, "default": 2 },
+    { "name": "consumers", "label": "Consumers", "kind": "range", "min": 1, "max": 8, "default": 2 },
+    { "name": "items", "label": "Items per producer", "kind": "select", "options": [1000, 10000, 50000], "default": 50000 },
+    { "name": "step", "label": "Design", "kind": "select", "options": ["one-to-one ring", "claimed positions", "sequenced slots"], "default": "sequenced slots",
+      "hint": "one-to-one ring: plain head and tail, correct only for one producer and one consumer. claimed positions: compare-and-swap on the head and tail. sequenced slots: a sequence number per slot says whose turn it is." }
+  ],
+  "args": ["items", "step", "producers"],
+  "results": [
+    { "name": "enqueued", "label": "Enqueued", "what": "items the producers put in" },
+    { "name": "dequeued", "label": "Dequeued", "what": "items the consumers took out" },
+    { "name": "unwritten", "label": "Unwritten slots", "what": "dequeues that found a slot its producer had not filled" },
+    { "name": "disordered", "label": "Out of order", "what": "items a consumer saw before an earlier item of the same producer" },
+    { "name": "duplicated", "label": "Seen twice", "what": "items that arrived at a consumer twice" },
+    { "name": "dropped", "label": "Dropped", "what": "items a producer gave up on after the queue stayed full" },
+    { "name": "elapsed", "label": "Elapsed", "what": "from the start barrier opening to the last worker finishing" }
+  ],
+  "lowerings": [
+    { "name": "enqueue", "functions": ["enqueue"], "opt": "O2" },
+    { "name": "dequeue", "functions": ["dequeue"], "opt": "O2" },
+    { "name": "spsc", "functions": ["enqueue_spsc", "dequeue_spsc"], "opt": "O2" }
+  ],
+  "native": { "args": "ITEMS DESIGN PRODUCERS", "example": "4 50000 2 2", "results": ["enqueued", "dequeued", "unwritten slot reads", "out of order", "seen twice", "dropped"] }
+}
