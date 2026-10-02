@@ -10,6 +10,6 @@
 | 7 | A | `buffer drains: x = 1 (lineX taken; B's copy invalidated)` | 0 |  |  | `y=1` | 1 | 0 | 0 | 0 | M/I | S/I | 3 |
 | 8 | B | `buffer drains: y = 1 (lineY taken; A's copy invalidated)` |  | 0 |  |  | 1 | 1 | 0 | 0 | M/I | I/M | 4 |
 
-Outcome: both loaded zero: the outcome no interleaving allows. Round trips: 4, counting every fetch and every invalidation of a line.
+Outcome: both loaded zero: the outcome no interleaving allows. Round trips: 4, counting each fetch or take of a line.
 
 *A model of each thread's operations, not the compiled code. The store-buffer test with plain stores and loads, one operation from each thread in turn, with each word on a line of its own: a store waits in the buffer and takes its line when it drains. M modified, S shared, I none.*

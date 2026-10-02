@@ -6,6 +6,6 @@
 | 3 | A | `atomic add slot0, 1 (line0 taken; B's copy invalidated)` | 3 | M/I | 3 |
 | 4 | B | `atomic add slot0, 1 (line0 taken; A's copy invalidated)` | 4 | I/M | 4 |
 
-Expected `slot0` = 4; final `slot0` = 4; lost 0. Round trips: 4, counting every fetch and every invalidation of a line.
+Expected `slot0` = 4; final `slot0` = 4; lost 0. Round trips: 4, counting each fetch or take of a line.
 
 *A model of each thread's operations, not the compiled code. Two threads, two atomic adds each to one shared word, one operation from each thread in turn. The line column gives each thread's copy: M modified, S shared, I none.*

@@ -47,11 +47,11 @@ the book's main interest here.
 
 Destination first: `ldr w8, [x9]` loads into `w8` from the address in `x9`, and `str w8, [x9]`
 stores. `x0` to `x30` are 64-bit registers and `w0` to `w30` their low 32 bits; `x0` to `x7` carry
-arguments and the result, `sp` is the stack pointer, and `wzr` or `xzr` reads as zero. `adrp`
-followed by `add` forms a global variable's address. Memory ordering shows in the instruction
-names: `ldar` and `stlr` are the acquire and release forms of `ldr` and `str`, and `ldxr` with
-`stxr` is the pair that makes an atomic read-modify-write without the LSE extension, where
-`ldadd` and `cas` do it in one instruction.
+arguments and the result, `sp` is the stack pointer, and `wzr` or `xzr` reads as zero. `adrp` finds
+the page a global variable sits on; `:lo12:name` on the next load, store or `add` supplies the rest
+of its address. Memory ordering shows in the instruction names: `ldar` and `stlr` are the acquire
+and release forms of `ldr` and `str`, and `ldxr` with `stxr` is the pair that makes an atomic
+read-modify-write without the LSE extension, where `ldadd` and `cas` do it in one instruction.
 
 ```{include} ../chapters/_generated/legend-aarch64.md
 ```
@@ -70,13 +70,14 @@ and `amoadd` and `amoswap` the one-instruction forms.
 
 ## WebAssembly
 
-A stack machine, so instructions name no registers. `local.get 0` pushes the function's first
-argument or local, `i32.load` pops an address and pushes the 32-bit word there, and `i32.store`
-pops a value and an address. The number after a memory instruction is an offset added to the
-address. Locals belong to the function; globals, such as the stack pointer, to the instance, so
-every instance of the module has its own copy. The `atomic` instructions are sequentially
-consistent, and the plain ones promise neither atomicity nor ordering on shared memory, which is
-what [ch24](#from-wasm-to-machine-code) builds on.
+A stack machine, so instructions name no registers. The listings are in the assembler syntax clang
+emits, which spells a few things differently from the specification's text format. `local.get 0`
+pushes the function's first argument or local, `i32.load` pops an address and pushes the 32-bit
+word there, and `i32.store` pops a value and an address. The number after a memory instruction is
+an offset added to the address. Locals belong to the function; globals, such as the stack pointer,
+to the instance, so every instance of the module has its own copy. The `atomic` instructions are
+sequentially consistent, and the plain ones promise neither atomicity nor ordering on shared
+memory, which is what [ch24](#from-wasm-to-machine-code) builds on.
 
 ```{include} ../chapters/_generated/legend-wasm.md
 ```

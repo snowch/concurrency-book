@@ -12,7 +12,7 @@
 | `ldaxr` (atomic or ordering) | A load-exclusive with acquire ordering. | The load half of an exclusive pair, with ch08's acquire ordering: how a lock is taken. |
 | `ldxr` (atomic or ordering) | A load-exclusive: loads the word and marks the address, so a later store-exclusive succeeds only if nothing wrote it in between. | The load half of the pair that makes ch03's atomic increment and ch04's compare-and-swap without LSE. |
 | `stlxr` (atomic or ordering) | A store-exclusive with release ordering. | The store half of an exclusive pair, with ch08's release ordering: how a lock is released or a value published. |
-| `stxr` (atomic or ordering) | A store-exclusive: stores only if the address is still marked by the matching load-exclusive, and reports failure as one in a register. | The store half of the pair; a failure means another core wrote the word, and the loop goes round. |
+| `stxr` (atomic or ordering) | A store-exclusive: stores only if the address is still marked by the matching load-exclusive, and reports failure as one in a register. | The store half of the pair; a failure means the word may have been written, or the reservation was lost for another reason, so the loop goes round. |
 | `swpa` (atomic or ordering) | Atomically swaps a register with a memory word, with acquire ordering. An LSE instruction. | The test-and-set of ch05 in one instruction, with ch08's acquire ordering built in. |
 | `add` | Adds the last two operands into the first. | Register arithmetic between a load and a store: the middle of the three steps, or half of an address. |
 | `adrp` | Puts the address of a 4 KiB page into a register, the first half of forming an address. | Forms an address: how the code reaches a shared variable. |
@@ -22,9 +22,9 @@
 | `b.ge` | Branches if the last compare found the first operand greater or equal, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `b.gt` | Branches if the last compare found the first operand greater, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `b.lt` | Branches if the last compare found the first operand less, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
-| `b.ne` | Branches if the last compare found the operands unequal. | The back edge of a retry loop: the compare failed, so go round again. |
+| `b.ne` | Branches if the last compare found the operands unequal. | The branch back to the top of a retry loop: the compare failed, so go round again. |
 | `b.pl` | Branches if the last result was not negative. | Control flow: what a retry loop, a spin or a wait is made of. |
-| `cbnz` | Branches if the register is not zero. | The back edge of an exclusive retry loop: the store-exclusive failed, so load again. |
+| `cbnz` | Branches if the register is not zero. | The branch back to the top of an exclusive retry loop: the store-exclusive failed, so load again. |
 | `cbz` | Branches if the register is zero. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `ccmp` | Compares only if the condition holds; otherwise sets the flags to the value given. | Arithmetic in a register: invisible to every other thread. |
 | `cmp` | Subtracts to set the flags, keeping no result. | The test of a spin or a retry: compares what was loaded with what was expected. |

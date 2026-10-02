@@ -43,8 +43,7 @@ Try these, in order:
    two parts: the WebAssembly instruction, `i32.atomic.rmw.add`, which is what the kernel says;
    and a host instruction the engine chose, which the page cannot show you, because the engine
    does not say.
-2. **Pick the WebAssembly tab under *At the machine*, then each native tab.** Those are the
-   candidates: what clang would emit for a native build. The engine's compiler is not clang and
+2. **Pick the WebAssembly tab under *At the machine*, then each native tab.** Those are the candidates for the relaxed C, not yet for the sequentially consistent WebAssembly: what clang would emit for a native build. The engine's compiler is not clang and
    owes it nothing; on x86-64 it will almost certainly emit a `lock` prefixed instruction too,
    because there is no other way to keep the promise, but which instruction and around what
    registers is its choice.
@@ -53,8 +52,7 @@ Try these, in order:
 4. **Go back to [ch10](#sequential-consistency)'s panel** and recall the result this boundary
    produced: relaxed and release-acquire atomics could not show the store-buffer outcome in the
    browser, because WebAssembly has only sequentially consistent atomics, so the engine had to keep that
-   order on the host, whatever instruction it chose. The boundary is not only a translation; it is a loss of distinctions
-   the C had.
+   order on the host, whatever instruction it chose. The distinctions were lost before the boundary, in the compiler, which had no weaker atomic to emit; the boundary then kept the strong one faithfully.
 
 ## What the source hides
 
@@ -112,10 +110,12 @@ sees the code.
 
 Read the WebAssembly first this time. Two constants and one instruction: the address, the operand,
 and `i32.atomic.rmw.add`, whose result is dropped. That is what the kernel is. The four native tabs
-are four answers to "what might the engine emit", each what clang emits for a native build, and the
-AArch64 pair shows that the answer depends on more than the architecture: with the LSE extension it
-is one instruction, without it a loop, and an engine can choose at load time by asking the
-processor what it has what it has.
+are four answers to "what might the engine emit" for the relaxed add the C asked for. The
+WebAssembly add is sequentially consistent, so on AArch64 and RISC-V the engine's answer must also
+carry the acquire and release that these fragments leave out; on x86-64 the `lock` prefix already
+orders everything. The AArch64 pair shows that the answer depends on more than the architecture:
+with the LSE extension it is one instruction, without it a loop, and an engine can choose at load
+time by asking the processor what it has.
 
 To see what your engine emitted, you would need the engine's own tools: V8, Chromium's engine,
 prints the machine code its WebAssembly compilers produce when started with a flag, and the other

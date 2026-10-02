@@ -104,14 +104,14 @@ Now the other extreme, each thread running to the end before the next begins:
 ```{include} _generated/counter-trace-sequential.md
 ```
 
-Nothing lost, because every load saw the previous store. The real workers run somewhere between
-the two schedules, decided by the operating system, the cores and the moment, and that is the
-whole of why the live number changes every run. In C this is a **data race**: two threads
-accessing one variable, at least one writing, with nothing to order them. The standard gives a
-program with a data race no meaning at all, which is a stronger statement than "the count may be
-wrong". Here the compiler happened to emit the three steps you expected, so the observable
-behaviour is the model's; [ch07](#the-compiler-is-part-of-the-story) shows what else the compiler
-may do with a race it is allowed to assume away.
+Nothing lost, because every load saw the previous store. The real workers run somewhere between the
+two schedules, decided by the operating system, the cores and the moment, and that is the whole of
+why the live number changes every run. In C this is a **data race**: two threads accessing one
+variable, at least one writing and at least one of them not atomic, with nothing to order them. The
+standard gives a program with a data race no meaning at all, which is a stronger statement than
+"the count may be wrong". Here the compiler happened to emit the three steps you expected, so the
+observable behaviour is the model's; [ch07](#the-compiler-is-part-of-the-story) shows what else the
+compiler may do with a race it is allowed to assume away.
 
 ## At the machine
 
@@ -143,14 +143,17 @@ Where the window is depends on the target. Pick one:
 On **AArch64** and **RISC-V** the window is between two instructions, the load and the store, and
 another core can run anything it likes in it. On **WebAssembly** the window is between `i32.load`
 and `i32.store`, and whatever host instructions the engine emits for them, two accesses stay two,
-so the window is the host's. On **x86-64** the window is inside one instruction. A
+so where the window falls in instructions is the host's to decide: the machine under the browser,
+whose code the book does not show. On **x86-64** the window is inside one instruction. A
 memory-destination `inc` performs a read of the word and a separate write of it. Without the `lock`
 prefix the instruction set does not promise that nothing lands between the two, so another core's
 write may. The instruction count was never the point. The two accesses are.
 
 The kernel's loop, in WebAssembly, shows the barrier every worker sleeps on and the call it then
-makes a million times. `memory.atomic.wait32` puts the worker to sleep until the page writes the
-flag; `call increment` is the increment, out of line, as [ch01](#what-x-plus-plus-does) wanted:
+makes a million times. The `br_table` is the kernel's `switch` on the operation, and each `loop`
+after it is one of its cases; the one that calls `increment` is the `default`, and the rest can be
+read past. `memory.atomic.wait32` puts the worker to sleep until the page writes the flag; `call
+increment` is the increment, out of line, as [ch01](#what-x-plus-plus-does) wanted:
 
 ```{include} _generated/counter-run-wasm.md
 ```
@@ -185,8 +188,7 @@ schedule:
 One interleaving, and a whole thread's work is gone at once. The window is the same width in
 operations, three steps, and a thousand times wider in consequence. The live run with *folded*
 rarely shows it, because each worker opens the window once instead of a million times; but it can,
-and it does on a machine with enough cores and enough runs. A race that rarely fires is still a
-race.
+and given enough cores and enough runs it may. A race that rarely fires is still a race.
 
 ## The mental model
 

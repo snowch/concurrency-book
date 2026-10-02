@@ -79,7 +79,7 @@ Four things that are often said in one breath are kept apart throughout:
   allowed to do.
 - **The instruction set**: what each instruction means on x86-64, AArch64, RISC-V and
   WebAssembly, and what each architecture may reorder.
-- **The microarchitecture**: caches, store buffers and coherence, which the instruction set hides
+- **The microarchitecture**: caches, store buffers and the coherence protocol, which the instruction set hides
   and the timings reveal.
 
 When a result surprises, the chapter says which of the four is responsible.

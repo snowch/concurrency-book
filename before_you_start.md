@@ -47,8 +47,9 @@ never fold, because they are the evidence.
 ## The C you will meet
 
 The kernels are short and use a small part of C. Everything in this table appears in them.
-Kernighan and Ritchie covers the first eight rows; everything from `uint32_t` down came later,
-and [Appendix E](#the-c-after-kernighan-and-ritchie) lists all of it, generated from the kernels.
+Kernighan and Ritchie covers the first seven rows and the `#ifdef`; everything else from `uint32_t`
+down came later, and [Appendix E](#the-c-after-kernighan-and-ritchie) lists it, generated from the
+kernels.
 
 | You will read | It means | From |
 |---|---|---|
@@ -62,7 +63,7 @@ and [Appendix E](#the-c-after-kernighan-and-ritchie) lists all of it, generated 
 | `uint32_t`, `int64_t` | Integers of a stated width, from `<stdint.h>`, so a word means the same on every target. | Library |
 | `#include <stdatomic.h>` | The declarations of C's atomic operations. | Library |
 | `_Atomic int counter;` | An atomic integer: every access to it is indivisible. What that buys, and what it does not, is [ch03](#atomic-operations). | C |
-| `atomic_fetch_add_explicit(&counter, 1, memory_order_relaxed)` | Adds to an atomic variable as one indivisible step and returns the old value. The last argument names an ordering; [Part III](#part-memory-ordering) explains the orderings, and until then read it as "the weakest". | Library |
+| `atomic_fetch_add_explicit(&counter, 1, memory_order_relaxed)` | Adds to an atomic variable as one indivisible step and returns the old value. The last argument names an ordering: what else another thread is promised to see when it sees this operation. [Part III](#part-memory-ordering) explains the orderings; until then read `memory_order_relaxed` as "atomic, and nothing more". | Library |
 | `volatile int flag;` | Tells the compiler that every access to `flag` must happen as written. It does not make accesses indivisible, keeps them in order only with other volatile accesses in the same thread, and promises nothing about what another thread sees; [ch07](#the-compiler-is-part-of-the-story) shows what it is for and [ch08](#acquire-and-release) what it is not. | C |
 | `#ifdef __wasm__` ... `#else` ... `#endif` | Conditional compilation: the lines between are compiled only when building for WebAssembly. The kernels use it to wait and wake in the way each platform offers; the name it tests is defined by the compiler. | C |
 | `CM_EXPORT("cm_run")`, `CM_NOINLINE` | Macros from the book's own header, `experiments/cm.h`. The first makes a function callable from the page; the second keeps it out of line. Neither is C or concurrency. | Compiler |
@@ -108,8 +109,8 @@ rest is how a function reaches its variable and returns. The notation:
   loads, `add` adds, `str` stores.
 - `x8`, `w9`, `eax`, `a0` are registers: a core's few named words of fast storage, where
   arithmetic happens.
-- Square brackets, `[x8, :lo12:counter]` or x86-64's `[rip + counter]`, mean the memory at that
-  address; RISC-V writes the same as `0(a0)`. The variable lives in memory, and the instructions
+- Square brackets, `[x8, :lo12:counter]` or x86-64's `[rip + counter]`, mean the memory at that address
+  (`:lo12:counter` is the rest of the variable's address, added to the page `adrp` found); RISC-V writes the same as `0(a0)`. The variable lives in memory, and the instructions
   that touch memory are the ones concurrency is about.
 - Hover over any instruction for two lines: what it does, and why it matters to a program with
   more than one thread. [Appendix D](#reading-the-fragments) lists every instruction the book's

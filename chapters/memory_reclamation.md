@@ -15,11 +15,21 @@ other thread may be reading the structure at every moment, and a node unlinked b
 in another thread's hands, between a read of the pointer and a read of what it points to.
 [ch17](#the-aba-problem) saw one consequence; this chapter sees the general one. A node freed and
 reused while a reader holds it is a use after free, which in C is undefined and in practice is a
-read of somebody else's data. The kernel makes it visible by poisoning every record it retires, and
-then shows one answer to the problem, the hazard pointer: a reader announces what it is reading,
-and the writer waits.
+read of somebody else's data. The kernel makes it visible by poisoning every record it retires: a
+live record holds its own index plus a thousand, retiring stores minus one over it, and a read that
+finds minus one has read a record that was reused, where a real allocator would have put the next
+object. Then the kernel shows one answer to the problem, the hazard pointer: a reader announces
+what it is reading, and the writer waits.
 
 ## The smallest program
+
+The records, and the pointer the readers follow:
+
+```{literalinclude} ../experiments/reclamation/reclamation.c
+:language: c
+:start-at: /* Each record holds one value
+:end-before: /* One word per reader
+```
 
 A writer publishes records through a pointer, one after another, and retires the old one each
 time. A reader follows the pointer and reads the record. Without protection:
@@ -72,11 +82,15 @@ makes them one. Between them the writer may do anything, including free the reco
 ```{include} _generated/reclamation-trace-none.md
 ```
 
-A hazard pointer is a word per reader that says "I am about to read this record". The reader
-writes it after loading the pointer and then loads the pointer again: if the pointer still names
-the record, the writer cannot have retired it yet, because the writer checks every hazard before
-retiring; if it has moved, the reader starts over. The writer, before reusing a retired record,
-reads every hazard and waits while any names it. The trace:
+A hazard pointer is a word per reader that says "I am about to read this record". The reader writes
+it after loading the pointer and then loads the pointer again: if the pointer still names the
+record, the writer cannot have retired it yet, because the writer checks every hazard before
+retiring; if it has moved, the reader starts over. The second load is there for one case: a writer
+that swung the pointer and scanned the hazards between the reader's first load and its store. That
+writer saw no hazard, so it may already have poisoned the record, and only the pointer can tell the
+reader so. If the pointer still names the record once the hazard is stored, no writer has swung it
+yet, and any writer that swings it later finds the hazard when it checks. The writer, before
+reusing a retired record, reads every hazard and waits while any names it. The trace:
 
 ```{include} _generated/reclamation-trace-hazard.md
 ```
@@ -114,12 +128,14 @@ The two readers, side by side:
 :::
 ::::
 
-The unprotected reader is two loads: the pointer, then the record at an address computed from
-it. On AArch64 the first is `ldar`, acquire, so that the second cannot be performed before it.
-The protected reader adds the hazard's store and the second load of the pointer, and on x86-64
-the sequentially consistent store of the hazard is the `xchg` of [ch10](#sequential-consistency),
-which is what keeps the reader's store visible before its load. The writer's retire loop reads
-the hazards and spins; it is in the kernel, and the native tabs show it:
+The unprotected reader is two loads: the pointer, then the record at an address computed from it.
+On AArch64 the first is `ldar`, acquire, which is what the C's acquire costs. The second load's
+address depends on the first, and AArch64 would order the pair even with a plain `ldr`; that is the
+instruction set's promise, not the language's. The protected reader adds the hazard's store and the
+second load of the pointer, and on x86-64 the sequentially consistent store of the hazard is the
+`xchg` of [ch10](#sequential-consistency), which is what keeps the reader's store visible before
+its load. The writer's retire loop reads the hazards and spins; it is in the kernel, and the native
+tabs show it:
 
 ::::{tab-set}
 :::{tab-item} x86-64

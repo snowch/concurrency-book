@@ -76,7 +76,7 @@ export async function mount(shell) {
       threads: Math.min(4, v.workers), iterations: t.iterations,
       layout: v.layout === "compare" ? "same word" : v.layout === "two lines apart" ? "own line" : v.layout,
     }),
-    caption: "A model of each worker's atomic adds, with the cache line each counter sits on. A write needs the only copy of its line, so it invalidates every other core's copy, and the model counts each fetch and each invalidation as one round trip. Three states and a round-trip count, not any processor's protocol; and not the compiled code. Threads beyond four are left out.",
+    caption: "A model of each worker's atomic adds, with the cache line each counter sits on. A write needs the only copy of its line, so it invalidates every other core's copy, and the model counts each fetch or take of a line as one round trip. Three states and a round-trip count, not any processor's protocol; and not the compiled code. Threads beyond four are left out.",
   });
 
   const native = shell.panel("native");

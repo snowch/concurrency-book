@@ -4,12 +4,12 @@
 
 | Instruction | What it does | Why it matters here |
 |---|---|---|
-| `cmpxchg` (atomic or ordering) | Compare-and-exchange: if the accumulator equals the operand, stores the register into the operand; otherwise loads the operand into the accumulator. Atomic with a lock prefix. | The compare-and-swap of ch04, and the foundation of every lock-free structure in Part V. |
+| `cmpxchg` (atomic or ordering) | Compare-and-exchange: if eax, the accumulator, equals the operand, stores the register into the operand; otherwise loads the operand into eax. Atomic with a lock prefix. | The compare-and-swap of ch04, and the foundation of every lock-free structure in Part V. |
 | `lock` (atomic or ordering) | A prefix: the instruction's read and write of memory become one step no other core can get between, and a full barrier. | The one byte that turns ch01's increment into ch03's atomic one, and on x86-64 a full fence besides. |
 | `mfence` (atomic or ordering) | A fence: every earlier load and store of this thread completes before any later one. | The fence of ch11: with a locked instruction, one of the two ways on x86-64 to stop a store waiting in the store buffer while a later load runs. |
 | `xadd` (atomic or ordering) | Exchange-and-add: adds the register to the operand and leaves the operand's old value in the register. Atomic with a lock prefix. | An atomic fetch-and-add that returns the old value: ch03's counter when the old value is wanted. |
 | `xchg` (atomic or ordering) | Swaps a register with its operand; with a memory operand the swap is atomic, with or without a lock prefix. | The test-and-set of ch05: one atomic swap takes the lock and reports whether it was free. |
-| `add` | Adds the source to the destination and keeps the result in the destination. | Register arithmetic between a load and a store: the middle of the three steps. |
+| `add` | Adds the source to the destination and keeps the result in the destination. | With a register destination, the middle of the three steps; with a memory destination, a read and a separate write on memory, like inc, atomic only with a lock prefix. |
 | `and` | Bitwise and of the two operands, into the first. | Arithmetic in a register: invisible to every other thread. |
 | `cmp` | Subtracts the second operand from the first to set the flags, keeping neither. | The test of a spin or a retry: compares what was loaded with what was expected. |
 | `dec` | Subtracts one from the operand, which may be in memory. | A read-modify-write on memory in one instruction; without a lock prefix, still a read and a separate write. |
@@ -19,7 +19,7 @@
 | `jge` | Jumps if the last compare found the first operand greater or equal, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `jle` | Jumps if the last compare found the first operand less or equal, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `jmp` | Jumps unconditionally. | Control flow: what a retry loop, a spin or a wait is made of. |
-| `jne` | Jumps if the last compare found the operands unequal. | The back edge of a retry loop: the compare failed, so go round again. |
+| `jne` | Jumps if the last compare found the operands unequal. | The branch back to the top of a retry loop: the compare failed, so go round again. |
 | `jns` | Jumps if the last result was not negative. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `lea` | Computes an address and puts it in a register, without loading from it. | Forms an address: how the code reaches a shared variable. |
 | `mov` | Copies the source to the destination; with a memory operand it is a load or a store. | With a memory operand this is the load or the store: the two accesses a race gets between. |

@@ -107,11 +107,14 @@ And one thing the book has hidden on purpose until now. A browser hands a page s
 when the page is cross-origin isolated, which means served with two headers: one cuts the page off
 from windows of other origins that opened it or that it opens, the other forbids it to load
 anything from another origin that has not agreed to be loaded. The reason is a class of timing
-attacks, Spectre among them, that a shared memory and a fine clock make practical against anything
-in the same process. The host this book is published on cannot send those headers, so the book's
-pages install a service worker that adds them to every response and reload themselves once. You saw
-none of that; a page that cannot be isolated offers its trace and its desk commands instead.
-`CLAUDE.md` in the repository documents it for whoever maintains the book.
+attacks, Spectre among them, that a shared memory makes practical against anything in the same
+process: a worker counting up in a shared word is a clock finer than any the browser offers on
+purpose, and the attack needs such a clock to tell a cache hit from a miss. The host this book is
+published on cannot send those headers, so the book's pages install a service worker, a script the
+browser keeps beside the page and lets answer the page's own requests for its files; it hands back
+each file with the two headers added, and the page reloads itself once so that it is served through
+it. You saw none of that; a page that cannot be isolated offers its trace and its desk commands
+instead. `CLAUDE.md` in the repository documents it for whoever maintains the book.
 
 ## At the machine
 
@@ -159,7 +162,9 @@ The fix for a slow wake-up is not to need one: spin when the wait will be short,
 spin version does, and what a production lock does before it sleeps. The fix for a burned core is
 to sleep. The handshake kernel offers both and the panel's two numbers are the two sides. This
 panel is locked to spinning, so no wake-up is in the per-round-trip time: what remains is the
-word's journey between the two cores, and the spin counter both workers increment while they wait:
+word's journey between the two cores, and the spin counter both workers increment while they wait,
+which is declared beside `ping` and `pong` and most likely shares their line, so each spin also
+takes the line the other worker's store needs:
 
 ```lab
 experiment: handshake

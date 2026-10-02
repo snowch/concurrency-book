@@ -53,10 +53,16 @@ fragment states. To see the same assembly, or more of it:
 
 ```bash
 clang --target=x86_64-unknown-linux-gnu -O2 -ffreestanding -S -masm=intel -o - experiments/counter/counter.c
-clang --target=aarch64-unknown-linux-gnu -O2 -ffreestanding -S -o - experiments/counter/counter.c
+clang --target=aarch64-unknown-linux-gnu -mno-outline-atomics -O2 -ffreestanding -S -o - experiments/counter/counter.c
+clang --target=aarch64-unknown-linux-gnu -march=armv8.1-a -mno-outline-atomics -O2 -ffreestanding -S -o - experiments/counter/counter.c   # the fragments marked with LSE atomics
 clang --target=riscv64-unknown-linux-gnu -march=rv64gc -O2 -ffreestanding -S -o - experiments/counter/counter.c
 clang --target=wasm32 -O2 -matomics -mbulk-memory -ffreestanding -nostdlib -S -o - experiments/counter/counter.c
 ```
+
+`tools/lower.py` also passes `-fno-asynchronous-unwind-tables -fno-exceptions -fno-stack-protector`,
+which only remove directives and checks from the output, and `-mno-outline-atomics` on AArch64,
+without which a clang installed on an AArch64 machine may compile an atomic operation into a
+call to a library routine rather than the instruction the fragments show.
 
 To disassemble a native build instead of reading the compiler's assembly:
 
@@ -72,7 +78,7 @@ lowering of each; they are not a promise about your compiler.
 ## What you need
 
 - clang 18 with `wasm-ld` (the LLVM WebAssembly linker). On Debian and Ubuntu:
-  `apt install clang-18 lld-18`. The build refuses any clang other than clang 18.1 for the fragments for the fragments,
+  `apt install clang-18 lld-18`. The build refuses any clang other than clang 18.1 for the fragments,
   because they are checked byte for byte; the native harness builds with any recent clang or gcc.
 - Python 3.11 or later, with the packages in `requirements.txt`.
 - Node.js 22 and the pinned MyST, for the book itself: `make install`.

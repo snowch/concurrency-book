@@ -50,9 +50,10 @@ Taking the lock:
 ```
 
 The fast path is the compare-and-swap from ch04: zero to one, done. The slow path marks the word
-two, "somebody is waiting", and sleeps while it stays two. A woken worker does not know whether
-other sleepers remain, so it marks the word two again when it takes the lock, which is cheap and
-safe. Releasing:
+two, "somebody is waiting", and sleeps while it stays two. If the compare-and-swap found the word
+already at two, it is already marked and the exchange is skipped; `seen` is then two, which is not
+zero, so the worker goes on to sleep. A woken worker does not know whether other sleepers remain,
+so it marks the word two again when it takes the lock, which is cheap and safe. Releasing:
 
 ```{literalinclude} ../experiments/mutex/mutex.c
 :language: c
@@ -78,7 +79,7 @@ operation: spin
 Try these, in order:
 
 1. **Run it as it is, then switch the lock to *sleep*.** Both are exact. Compare the tiles:
-   the spinlock spins and never sleeps; the sleeping lock sleeps and never spins, and your device says how many of each. Compare *Elapsed* on your device. On some the sleeping lock is faster, because
+   the spinlock spins and never sleeps; the sleeping lock waits and never spins, and your device says how many of each; a wait that returned at once because the word had already changed is counted with the sleeps. Compare *Elapsed* on your device. On some the sleeping lock is faster, because
    the holder had its core to itself; on some the spinlock is, because the critical section was
    shorter than the cost of a sleep and a wake. Both are right. The chapter is the trade-off,
    not the winner.
@@ -87,8 +88,7 @@ Try these, in order:
    wasted for the whole critical section, a sleeper's is free.
 3. **Shorten it to ten steps.** Now the lock is likely held for less time than a wake-up takes, and spinning usually wins: the sleeper is woken after the lock has already been taken and released
    several times by workers that never slept.
-4. **Switch to *spin-then-sleep*.** A hundred tries, then sleep. Spins and sleeps both appear,
-   and *Elapsed* is near the better of the two. This is what production mutexes do.
+4. **Switch to *spin-then-sleep*.** A hundred tries, then sleep. Spins and sleeps both appear, and on many devices *Elapsed* is near the better of the two. Many production mutexes do this; *Fix one thing* says what else they add.
 5. **Open the deterministic trace.** Thread A takes the lock on the fast path; thread B fails,
    marks the word two, and sleeps. B takes no steps at all until A's release stores zero and
    notifies it. Switch the trace's operation to *spin* and watch B take a step for every one of
@@ -96,7 +96,9 @@ Try these, in order:
 
 ## What the source hides
 
-Sleeping is not a loop. A sleeping worker is not running, and the trace draws it that way:
+Sleeping is not a loop. A sleeping worker is not running, and the trace draws it that way. The
+number after `go to` is a line of the model's program, which the panel lists: `go to 6` is the
+critical section, `go to 13` the end of the release, `go to 2` the exchange a woken worker retries:
 
 ```{include} _generated/mutex-trace-sleep.md
 ```

@@ -9,8 +9,7 @@ title: Relaxed atomics
 
 What does an atomic operation still guarantee when it promises nothing about order?
 
-[ch08](#acquire-and-release) ended with a relaxed flag that failed to carry its data on a weakly
-ordered processor, and with a browser that could not show the failure. Relaxed is the ordering
+[ch08](#acquire-and-release) ended with a relaxed flag that may fail to carry its data on a weakly ordered processor, and with a browser that could not show the failure. Relaxed is the ordering
 this book has used since [ch03](#atomic-operations), on a counter that was exact every time.
 Both are correct. A relaxed atomic promises three things and withholds a fourth, and the
 counter needed only the three. This chapter names them, shows the fourth missing in the trace,
@@ -52,7 +51,7 @@ Try these, in order:
    yet: *At the machine* shows that the WebAssembly the kernel runs has no relaxed store or load
    to emit, so the relaxed version got the strong instructions.
 2. **Switch to *volatile*.** Stale reads return, because the compiler reordered the volatile
-   version's stores and left the relaxed version's alone. Relaxed did not promise that order: the compiler may move a plain store past a relaxed store of another variable, and here it chose not to. What relaxed promises is that the atomic accesses themselves are neither folded, hoisted nor reordered against each other.
+   version's stores and left the relaxed version's alone. Relaxed did not promise that order: the compiler may move a plain store past a relaxed store of another variable, and here it chose not to. What relaxed promises is that each atomic access is one indivisible step, in one order per variable that every thread sees; in practice the compiler then neither folds nor hoists them, though the language asks only that each store become visible in a reasonable time. Two relaxed accesses to different variables may be reordered, by the compiler and by the processor.
 3. **Open the deterministic trace** with *relaxed* and the writer's stores reaching memory *flag
    first*. The model lets a relaxed flag overtake the data, as a weakly ordered processor does,
    and a stale read follows. The trace is the only place in this browser where relaxed's missing
@@ -116,9 +115,9 @@ The reader's loop, relaxed against acquire. Look at what each target charges for
 On **AArch64** the relaxed loop spins on `ldr` and the acquire loop on `ldar`. `ldr` is the
 ordinary load; nothing about it tells the processor to hold later loads back, and it is the
 cheapest instruction on the page. **RISC-V** charges a `fence r, rw` after the acquire load and
-nothing for the relaxed one. On **x86-64** the two are the same `mov`: the processor orders
-loads against later loads whether asked or not, so relaxed and acquire cost the same and the
-distinction lives only in the compiler. On **WebAssembly** both are `i32.atomic.load`, because
+nothing for the relaxed one. On **x86-64** the two are the same `mov`: the processor orders a load
+against every later load and store whether asked or not, so relaxed and acquire cost the same and
+the distinction lives only in the compiler. On **WebAssembly** both are `i32.atomic.load`, because
 the instruction set has one atomic load and it is the strong one.
 
 The writer's side is in [ch08](#acquire-and-release)'s fragments: a relaxed store is a plain
@@ -134,9 +133,11 @@ variable; what the processor adds is nothing, on these instructions; the page do
 The fix is to use each ordering for what it promises. A counter that nobody reads to learn about
 other data: relaxed, as ch03's is. A flag that says other data is ready: release and acquire, as
 ch08's is. This panel runs the relaxed counter's cousin, the relaxed flag, and is locked so you can
-set the trials and watch the stale count, which is the promise relaxed does not make. The promise
-it keeps, an exact count under contention, is ch03's panel, while the stale count is the promise it
-does not make:
+set the trials and watch the stale count, which is the promise relaxed does not make. In this
+browser the count stays at zero however many trials you set, for the reason *Run it* gave: the
+kernel's WebAssembly has only strong atomics. The trace above is where the missing promise shows;
+the panel shows what the browser hides. The promise it keeps, an exact count under contention, is
+ch03's panel, while the stale count is the promise it does not make:
 
 ```lab
 experiment: publication
@@ -152,9 +153,9 @@ browser. That gap between what a program may do and what it did on one machine i
 dangerous thing in this book. A program with a relaxed flag passes every test on x86-64 when the
 compiler happens to keep the stores in order, as this one did, because the architecture then keeps
 them in order too; it passes every test in this browser, because WebAssembly's atomics are all
-strong; and it fails on a phone, where AArch64's `str` and `ldr` owe it nothing. The fix was never
-to find the machine that shows the failure. It was to ask the language for the order, and let each
-target pay for it as the fragments show.
+strong; and it may fail on a phone, where AArch64's `str` and `ldr` owe it nothing. The fix was
+never to find the machine that shows the failure. It was to ask the language for the order, and let
+each target pay for it as the fragments show.
 
 ## The mental model
 

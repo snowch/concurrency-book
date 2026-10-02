@@ -10,10 +10,10 @@ title: Cache coherence
 If every core has its own cache, how does a write by one ever reach another?
 
 Part III treated memory as one place that stores reach sooner or later. It is not one place. Each
-core keeps copies of the memory it uses in caches of its own, a few tens of kilobytes close to
-the core and a few megabytes further out, and reads and writes those copies, not the memory. A
-counter that four workers increment is in four caches at once. The promise that every core sees
-one order of stores to it, which [ch09](#relaxed-atomics) called coherence, is kept by a protocol
+core keeps copies of the memory it uses in caches of its own, a few tens of kilobytes close to the
+core and a few megabytes further out, and reads and writes those copies, not the memory. A counter
+that four workers increment has to pass through four caches. The promise that every core sees one
+order of stores to it, which [ch09](#relaxed-atomics) called coherence, is kept by a protocol
 between the caches, and the protocol has a cost that the atomic increment of
 [ch03](#atomic-operations) paid without saying so. This chapter measures it.
 
@@ -51,8 +51,7 @@ Try these, in order:
    line spends more of its time in transit.
 3. **One worker.** The gap closes: one core, one cache, the line stays put, and every layout costs
    the same.
-4. **Pick *same line* alone.** As slow as *same word*, though no two workers touch the same
-   variable. Hold that thought for ch13.
+4. **Pick *same line* alone.** On most devices as slow as *same word*, though no two workers touch the same variable. Hold that thought for ch13.
 
 ## What the source hides
 
@@ -78,10 +77,11 @@ the line from whoever holds it. Coherence is a property of a line.
 
 The teaching machine shows the protocol's effect once its model is given lines. Each word is told
 which line it sits on, and each thread's cache holds a copy of a line in one of three states:
-*modified*, the only copy, which the thread may write; *shared*, a copy for reading; or no copy.
-A read needs a copy and a write needs the only one, so a write invalidates every other cache's
-copy first. The machine counts every fetch and every invalidation as one round trip, which is
-the cost the panel above timed. Two threads, two atomic adds each, on one shared word:
+*modified*, the only copy, which the thread may write; *shared*, a copy for reading; or no copy. A
+read needs a copy and a write needs the only one, so a write invalidates every other cache's copy
+first. The machine counts every fetch of a line, and every taking of a line whatever that
+invalidates, as one round trip: a count that stands for the cost the panel above timed. Two
+threads, two atomic adds each, on one shared word:
 
 ```{include} _generated/sharing-trace-same-word.md
 ```
@@ -133,10 +133,11 @@ The increment, which is the same instruction in every layout:
 One locked `inc`, one exclusive-load-and-store loop, one `amoadd.w`, one `i32.atomic.rmw.add`,
 exactly as in [ch03](#atomic-operations), with the address in a register rather than a symbol
 because the kernel passed it in. There is no instruction for the coherence traffic. The instruction
-set describes what a core does to its own view of memory; the protocol that keeps the views
-coherent is below it, in the microarchitecture, and the only way to see it from a program is to
-time it. The teaching machine shows it only because its model was given lines to hold and a
-count of their round trips; nothing in the instructions it mirrors says where a line is.
+set promises that every core sees one order of writes to a word, and says nothing about how; the
+protocol that keeps that promise is below it, in the microarchitecture, and the only way to see it
+from a program is to time it. The teaching machine shows it only because its model was given lines
+to hold and a count of their round trips; nothing in the instructions it mirrors says where a line
+is.
 
 The AArch64 loop shows one thing the others hide. `ldxr` marks the address and `stxr` stores only
 if nothing else has written near it since; how near is the core's choice, and on most cores it is

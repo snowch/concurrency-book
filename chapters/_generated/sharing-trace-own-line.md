@@ -6,6 +6,6 @@
 | 3 | A | `atomic add slot0, 1` | 2 | 1 | M/I | I/M | 2 |
 | 4 | B | `atomic add slot16, 1` | 2 | 2 | M/I | I/M | 2 |
 
-Expected `slot0` = 2; final `slot0` = 2; lost 0. Round trips: 2, counting every fetch and every invalidation of a line.
+Expected `slot0` = 2; final `slot0` = 2; lost 0. Round trips: 2, counting each fetch or take of a line.
 
 *A model of each thread's operations, not the compiled code. Two threads, two atomic adds each to a word of its own, each word on a line of its own, one operation from each thread in turn. M modified, S shared, I none.*

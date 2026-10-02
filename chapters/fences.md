@@ -31,8 +31,19 @@ The volatile store and load from ch10, with a full fence between them:
 In C11 `atomic_thread_fence(memory_order_seq_cst)` orders this thread's accesses as other threads
 see them, but only through the atomic operations around it; this kernel's accesses are volatile, so
 the language promises nothing here. What the run shows is the fence instruction each target emits,
-which orders plain accesses too. It touches no variable. It is the only line in the kernel that
-compiles to an instruction naming no address.
+which orders plain accesses too. It touches no variable. It is the only line in the kernel that compiles to an instruction naming no address.
+
+:::{dropdown} Why the language promises nothing for this fence
+:class: c
+A fence in C11 orders nothing on its own. It takes effect through an atomic operation beside it:
+a release fence before an atomic store, or an acquire fence after an atomic load, synchronises
+with the matching operation in the other thread. This kernel's store and load are volatile, not
+atomic, so under the language the two threads still race, as in
+[ch02](#two-threads-one-variable), and the standard gives the run no meaning. The kernel keeps
+them volatile so the fragment shows the fence instruction on its own, and the run shows that
+instruction's promise, which is the instruction set's and holds for plain accesses too. A program
+that wants the language's promise puts the fence beside an atomic.
+:::
 
 ## Run it
 
@@ -70,12 +81,12 @@ also takes a place in the single order of ch10. Fences let a program pay for ord
 around a group of plain or relaxed accesses, instead of on every access; that is their reason to
 exist beside the orderings on operations.
 
-What a fence does not do is make anything atomic. A plain `counter++` with a fence before it and
-a fence after it is still a load, an add and a store, and another thread's store still lands
-between the load and the store. The fence says the load completes before the store; it says
-nothing about what other threads do in between, because a fence is a statement about this
-thread's accesses alone. [ch02](#two-threads-one-variable)'s trace with a fence in each thread
-would lose exactly the same updates.
+What a fence does not do is make anything atomic. A plain `counter++` with a fence between its load
+and its store, and another after the store, is still a load, an add and a store, and another
+thread's store still lands between the load and the store. The fence says the load completes before
+the store; it says nothing about what other threads do in between, because a fence is a statement
+about this thread's accesses alone. [ch02](#two-threads-one-variable)'s trace with a fence in each
+thread would lose exactly the same updates.
 
 ## At the machine
 
@@ -105,12 +116,9 @@ would lose exactly the same updates.
 **x86-64**: `mfence`, memory fence: every load and store before it is performed before any after
 it. On the cores the book knows, that means the store buffer drains before the next load. It is the
 one explicit full fence x86-64 has, and it is slower than a locked instruction doing the same job,
-which is why ch10's compiler chose `xchg` for the sequentially consistent store and why some
-runtimes use a locked add to a stack slot as a fence.
+which is why ch10's compiler chose `xchg` for the sequentially consistent store and why some runtimes use a locked add of zero to a word on the thread's own stack as a fence: the add changes nothing anyone can see, and the lock prefix is a full fence, as the paragraphs below say.
 
-**AArch64**: `dmb ish`, data memory barrier, inner shareable domain. Every memory access before
-it completes before any after it, as observed by every core in the inner shareable domain, which
-is the cores that share memory. AArch64 has lighter barriers too, `dmb ishst` for stores only
+**AArch64**: `dmb ish`, data memory barrier, inner shareable domain. Every memory access before it is observed before any after it, by every core in the inner shareable domain, which is the cores that share memory; it waits for nothing to complete, which is `dsb`'s job. AArch64 has lighter barriers too, `dmb ishst` for stores only
 and `dmb ishld` for loads, and the acquire and release instructions of ch08 that order without
 a barrier at all.
 
@@ -118,9 +126,7 @@ a barrier at all.
 writes before, reads and writes after. `fence rw, w` was ch08's release and `fence r, rw` its
 acquire; the full fence is both.
 
-**WebAssembly**: `atomic.fence`, which orders every access, atomic or not, before it against
-every access after it. It is the only ordering instruction WebAssembly has beyond the strong
-atomics, and it is there for exactly this: ordering plain accesses without making them atomic.
+**WebAssembly**: `atomic.fence`, a sequentially consistent fence whose promise, like C11's, runs through the atomics around it. It is the only ordering instruction WebAssembly has beyond the strong atomics. The engine lowers it to the host's full fence, which is what orders this kernel's plain accesses.
 
 The fragments show the asymmetry the chapter began with. An atomic operation names a variable
 and changes it; a fence names nothing. On x86-64 a locked operation also acts as a full fence,
@@ -147,21 +153,20 @@ the access, because `stlr` and `ldar` are usually cheaper than `dmb`; this page 
 
 Try to fix [ch02](#two-threads-one-variable) with a fence. Put a full fence after the load and
 another after the store in each thread's increment. No trace offers this variant; step ch02's trace
-under *alternate* and add the fence in your head: it drains a buffer that holds nothing, changes no
-step, and the same update is lost: thread A loads, thread B loads, both add, both store. The fences
-ordered each thread's load before its own store, which was never in doubt. They did nothing about
-the other thread, because a fence cannot. The fix for ch02 was an atomic read-modify-write, which
-excludes the other thread for the duration of the operation; the fix for ch10 was an ordering,
-which a fence can provide. Two problems, two tools, and a fence is the right one for exactly one of
-them.
+under *alternate* and add the fence in your head: each thread's load already completes before its
+own store, so the fence changes no step, and the same update is lost: thread A loads, thread B
+loads, both add, both store. The fences ordered each thread's load before its own store, which was
+never in doubt. They did nothing about the other thread, because a fence cannot. The fix for ch02
+was an atomic read-modify-write, which excludes the other thread for the duration of the operation;
+the fix for ch10 was an ordering, which a fence can provide. Two problems, two tools, and a fence
+is the right one for exactly one of them.
 
 ## The mental model
 
 :::{div}
 :class: model
 
-**A fence orders this thread's accesses as other threads see them.** Before the fence completes
-before after the fence. A release fence protects earlier accesses from later stores; an acquire
+**A fence orders this thread's accesses as other threads see them.** Before the fence is seen before after the fence. A release fence protects earlier accesses from later stores; an acquire
 fence protects later accesses from earlier loads; a full fence is both.
 
 **A fence touches no variable and excludes no thread.** It cannot make a read-modify-write

@@ -57,11 +57,9 @@ Try these, in order:
 1. **Run it.** With reuse at once, *Poisoned reads* is not zero, as in ch18, on a device with more than one core; the count is one observation: the writer reused a
    record a reader was reading.
 2. **Switch the writer to *waits for a grace period*.** Zero poisoned reads, and *Grace-period
-   waits* is large. Compare *Reads* with *Elapsed*: the readers read for as long as the writer ran, at the
-   rate they had before, because their path did not change. The writer made the same number of
+   waits* is large. Compare *Reads* with *Elapsed*: the readers read for as long as the writer ran, and their path did not change; what the writer's spinning cost them is in the ratio, and the page does not separate it. The writer made the same number of
    updates and spent far longer making them.
-3. **Add readers.** The writer's waits grow with the number of readers, since the grace period
-   ends only when the last of them has passed a quiescent state. The readers' path is unchanged; their rate is not measured here.
+3. **Add readers.** The writer's waits grow with the number of readers, since the grace period ends only when the last of them has passed a quiescent state: a point between two reads, where the reader holds no record, which is where this kernel's reader notes the epoch. The readers' path is unchanged; their rate is not measured here.
 4. **Open the deterministic trace.** The reader notes the epoch, follows the pointer, and reads.
    The writer publishes record two, moves the epoch to one, and spins until the reader's note
    says one, which it does only after the reader has finished. Only then does the writer poison
@@ -70,11 +68,13 @@ Try these, in order:
 ## What the source hides
 
 A reader that has noted epoch `e` cannot be inside a read that began before the writer moved the
-epoch to `e`, because the note is written between reads. So a writer that moves the epoch after
-publishing, and then waits until every reader has noted the new epoch, knows that every read
-that could have seen the old pointer has finished. That is the grace period, and it is a
-statement about time, not about any record: the writer never learns which record a reader held,
-only that the reader has moved on.
+epoch to `e`, because the note is written between reads, and because its store is a release and its
+load an acquire (the kernel makes both sequentially consistent): a relaxed note could become
+visible before the read's loads had been performed, and the writer would act on it. So a writer
+that moves the epoch after publishing, and then waits until every reader has noted the new epoch,
+knows that every read that could have seen the old pointer has finished. That is the grace period,
+and it is a statement about time, not about any record: the writer never learns which record a
+reader held, only that the reader has moved on.
 
 ```{include} _generated/rcu-trace-grace.md
 ```
@@ -146,8 +146,19 @@ The write side, where the wait lives:
 :::
 ::::
 
-The publish is an exchange with acquire and release, the epoch moves on with a sequentially
-consistent add, and the grace period is the loop over the readers' notes.
+The publish is an exchange with acquire and release, the epoch moves on with a sequentially consistent add, and the grace period is the loop over the readers' notes.
+
+:::{dropdown} What `memory_order_acq_rel` asks for
+:class: library
+On a read-modify-write, both of [ch08](#acquire-and-release)'s orderings at once: release on its
+store half and acquire on its load half. The release is the one this kernel needs: the record's
+value is stored before the exchange, and the release makes it travel with the pointer the exchange
+publishes. The acquire orders what the writer does after the exchange behind it, which nothing
+here depends on. [ch18](#memory-reclamation)'s writer asked for sequential consistency on the same
+exchange because its store of the pointer and its load of the hazard were the store-buffer pair;
+here it is the epoch's sequentially consistent add, and the readers' sequentially consistent notes
+of it, that the grace period relies on.
+:::
 
 ## Fix one thing
 
@@ -160,10 +171,12 @@ grace: waits for a grace period
 lock: grace
 ```
 
-The read side is now the cheapest possible safe read of a shared structure: the same two loads
-as an unsafe one. That is why RCU is the mechanism under a large part of an operating system
-kernel's read-mostly data, where readers outnumber writers by orders of magnitude and a writer
-that waits a few milliseconds costs nothing anyone notices.
+The read side is now the cheapest safe read the language can express: the same two loads as an
+unsafe one. An operating-system kernel reads cheaper still, with a plain load whose address depends
+on the pointer, which AArch64 and RISC-V order without an acquire; C has no usable name for that,
+so the fragments show the acquire. That is why RCU is the mechanism under a large part of an
+operating system kernel's read-mostly data, where readers outnumber writers by orders of magnitude
+and a writer that waits a few milliseconds costs nothing anyone notices.
 
 ## Break it again
 

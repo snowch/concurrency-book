@@ -49,6 +49,17 @@ Step three gives every slot a sequence number that says whose turn it is:
 :end-before: /* a: items per producer
 ```
 
+:::{dropdown} Reading `t & MASK` and `gap`
+:class: c
+`SLOTS` is the ring's size, a power of two, and `MASK` is one less, so `t & MASK` is the slot a
+position lands in as the positions count up without limit. `seq - t` is the difference of two
+counters that wrap, cast to a signed integer so that a sequence one lap behind reads below zero.
+A gap of zero means the slot is ready for this position. Below zero, on the producer's side, the
+slot still holds the previous lap's item that no consumer has taken, so the ring is full; on the
+consumer's side, the producer has not filled it yet, so the ring is empty. Above zero, another
+thread has already taken this position, so the loop reads the index again.
+:::
+
 ## Run it
 
 Two producers and two consumers, fifty thousand items each, through the ring that works for one
@@ -66,8 +77,7 @@ Try these, in order:
 1. **Run it.** On a device with more than one core, the one-to-one ring used by two of each loses items: *Dequeued* is
    far below *Enqueued*, *Unwritten slots* is large, and some items arrive out of order. Two
    producers both read the tail, both write the same slot, both store the same new tail: one
-   item is overwritten and the tail advances once for two writes. The consumers do the same at
-   the head.
+   item is overwritten and the tail advances once for two writes. The consumers do the same at the head: two read the same head, both exchange the same slot, and the second gets the zero the first left behind, which the page counts as an unwritten slot.
 2. **Switch the design to *claimed positions*.** Most items now arrive, but *Unwritten slots* is
    not zero: a consumer claimed a position by compare-and-swap before the producer that claimed
    it had written the item, and found the slot empty. The claims are atomic; the slot is not
@@ -212,8 +222,7 @@ release and acquire on the two indices.
 
 ## What this cannot tell you
 
-**Throughput.** The live time includes the checks every consumer runs on every item. The
-relative cost of the three designs is visible; the absolute rate is not a measurement.
+**Throughput.** The live time includes the checks every consumer runs on every item. The relative cost of the three designs is not visible either: a broken design does less work, and a shorter time for lost items is not a cheaper queue. Compare the sequenced ring with the one-to-one ring at one of each, where both are correct; the absolute rate is not a measurement.
 
 **What a full queue should do.** Block, drop, or grow is a design choice above the structure.
 The kernel drops after a long wait, for the page's sake.

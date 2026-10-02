@@ -85,10 +85,10 @@ Try these, in order:
 
 `counter++` is a read-modify-write. Whatever the instruction count, an increment of a variable in
 memory is a read of the word, an addition, and a write of the result, and the read and the write
-are two separate memory accesses. The book has a machine built to show exactly that. The
-teaching machine is a model: each thread has a few registers and a program counter, the threads
-share one memory, and each runs a short program written by hand to mirror the kernel's C. Here is
-its program for `increment`, beside the line it mirrors:
+are two separate memory accesses. The book has a machine built to show exactly that. The teaching
+machine is a model: each thread has a few registers and a program counter, the number of the
+operation it will run next, the threads share one memory, and each runs a short program written by
+hand to mirror the kernel's C. Here is its program for `increment`, beside the line it mirrors:
 
 ```{include} _generated/counter-program-plain.md
 ```
@@ -217,9 +217,7 @@ what you see.
 **AArch64** shows the three steps as three instructions, and nothing hides them: `ldr` loads the
 word into a register, `add` adds one, `str` stores it back. The `adrp` before them forms the
 variable's address. **RISC-V** is the same shape with its own names: `lw`, `addi`, `sw`.
-**WebAssembly** is a stack machine, so the register is the stack: `i32.load` pushes the value,
-`i32.add` replaces it with the sum, `i32.store` writes it. The `i32.const 0` lines are the
-address of the variable, pushed where the load and the store need it.
+**WebAssembly** is a stack machine: an instruction takes its operands from a stack of values and leaves its result there, so that stack plays the register's part. `i32.load` pushes the value, `i32.add` replaces it with the sum, `i32.store` writes it. Each `i32.const 0` pushes a base address of zero, and the name after `i32.load` and `i32.store` is `counter`'s offset from it; the two together are the variable's address, pushed where the load and the store need it.
 
 **x86-64 is the one that lies to you.** The compiler chose `inc dword ptr [rip + counter]`: one
 instruction that increments a word in memory in place. The source became one instruction, so it is
@@ -280,12 +278,14 @@ the loop inside the function, where the compiler can see all of it:
 
 The loop is gone. The compiler proved that running the increment `n` times has the same effect, for
 one thread, as adding `n` once, and emitted one load, one add of `n` and one store. On x86-64 it is
-one `add` with the count in a register. That is what *folded* ran in the panel above, and why its
-*Elapsed* collapsed in your run. The compiler is allowed to do this because the language told it
-nothing about other threads: a variable that is not atomic is, as far as the compiler is concerned,
-this thread's alone. [ch07](#the-compiler-is-part-of-the-story) is about the consequences. The fix,
-for a kernel that must do what it says, is the out-of-line call: the compiler cannot see through
-it, so the loop stays a loop.
+one `add` with the count in a register. `edi`, `w0` and `a0` are where each target's function
+receives `n`, and the compare and branch before the add skip it when `n` is zero or less, as the
+loop would have done nothing. That is what *folded* ran in the panel above, and why its *Elapsed*
+collapsed in your run. The compiler is allowed to do this because the language told it nothing
+about other threads: a variable that is not atomic is, as far as the compiler is concerned, this
+thread's alone. [ch07](#the-compiler-is-part-of-the-story) is about the consequences. The fix, for
+a kernel that must do what it says, is the out-of-line call: the compiler cannot see through it, so
+the loop stays a loop.
 
 ## Break it again
 

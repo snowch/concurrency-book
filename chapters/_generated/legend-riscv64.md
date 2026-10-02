@@ -12,8 +12,8 @@
 | `lr.d.aq` (atomic or ordering) | Load-reserved of a 64-bit word, with acquire ordering. | The load half of a reserved pair, with ch08's acquire ordering. |
 | `lr.w` (atomic or ordering) | Load-reserved: loads a word and reserves the address for a store-conditional. | The load half of the pair that makes ch04's compare-and-swap on RISC-V. |
 | `lr.w.aq` (atomic or ordering) | Load-reserved with acquire ordering. | The load half of a reserved pair, with ch08's acquire ordering: how a lock is taken. |
-| `sc.d` (atomic or ordering) | Store-conditional of a 64-bit word: stores only if the reservation still holds, and writes zero on success to a register. | The store half of a reserved pair; a failure means another core wrote the word, and the loop goes round. |
-| `sc.w` (atomic or ordering) | Store-conditional: stores only if the reservation from the load-reserved still holds, and writes zero on success or non-zero on failure to a register. | The store half of the pair; a failure means another core wrote the word, and the loop goes round. |
+| `sc.d` (atomic or ordering) | Store-conditional of a 64-bit word: stores only if the reservation still holds, and writes zero on success to a register. | The store half of a reserved pair; a failure means the word may have been written, or the reservation was lost for another reason, so the loop goes round. |
+| `sc.w` (atomic or ordering) | Store-conditional: stores only if the reservation from the load-reserved still holds, and writes zero on success or non-zero on failure to a register. | The store half of the pair; a failure means the word may have been written, or the reservation was lost for another reason, so the loop goes round. |
 | `sc.w.rl` (atomic or ordering) | Store-conditional with release ordering. | The store half of a reserved pair, with ch08's release ordering: how a lock is released. |
 | `add` | Adds two registers into a third. | Arithmetic in a register: invisible to every other thread. |
 | `addi` | Adds a constant to a register. | Register arithmetic between a load and a store: the middle of the three steps. |
@@ -27,8 +27,8 @@
 | `bgez` | Branches if the register is not negative. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `blez` | Branches if the register is zero or negative. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `blt` | Branches if the first register is less, as signed numbers. | Control flow: what a retry loop, a spin or a wait is made of. |
-| `bne` | Branches if the two registers differ. | The back edge of a retry loop: the compare failed, so go round again. |
-| `bnez` | Branches if the register is not zero. | The back edge of a reserved retry loop: the store-conditional failed, so load again. |
+| `bne` | Branches if the two registers differ. | The branch back to the top of a retry loop: the compare failed, so go round again. |
+| `bnez` | Branches if the register is not zero. | The branch back to the top of a reserved retry loop: the store-conditional failed, so load again. |
 | `j` | Jumps unconditionally. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `ld` | Loads a 64-bit word from memory. | A load: the read half of a read-modify-write, and the moment this thread's view of the word is taken. |
 | `li` | Loads a constant into a register. | A register copy or a constant: invisible to every other thread. |

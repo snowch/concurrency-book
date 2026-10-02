@@ -127,11 +127,13 @@ uses the exclusive pair on `x` registers, or `casa` on an `x` register with **LS
 `lr.d` and `sc.d`. **WebAssembly** has `i64.atomic.rmw.cmpxchg`, and the index arithmetic around it
 is the 64-bit shifts and masks the macros in the kernel spell out.
 
-A real pointer is already 64 bits wide on these targets, so a tagged pointer needs either a
-128-bit compare-and-swap, which x86-64 has as `cmpxchg16b` and AArch64 as `casp`, or spare bits
-in the pointer, which most allocators leave at the bottom and current processors leave at the
-top. Both are used in production; neither is portable; and the version counter can wrap, which
-is a probability argument rather than a proof.
+A real pointer is already 64 bits wide on these targets, so a tagged pointer needs either a 128-bit
+compare-and-swap, which x86-64 has as `cmpxchg16b` on all but its earliest processors and AArch64
+as `casp` with LSE or the exclusive pair `ldxp` and `stxp` without, or spare bits in the pointer:
+the lowest few, which most allocators leave at zero because they hand out addresses aligned to a
+word or more, and the highest, which current processors leave unused because an address is shorter
+than a register. Both are used in production; neither is portable; and the version counter can
+wrap, which is a probability argument rather than a proof.
 
 ## Fix one thing
 
@@ -143,6 +145,17 @@ workers: 4
 head: tagged
 lock: head
 ```
+
+The head and its version share one word, and three macros take it apart and put it together:
+
+```{literalinclude} ../experiments/aba/aba.c
+:language: c
+:start-at: #define INDEX
+:end-before: /* Per worker
+```
+
+`INDEX` keeps the low half of the word, `TAG` the high half, and `MAKE` puts an index and a
+version back together; the version goes up by one in every `MAKE` a swing stores.
 
 The kernel's tagged push and pop:
 

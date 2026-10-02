@@ -29,6 +29,15 @@ The working list. PLAN.md says why; this says what is next.
   (registers, program counter, store buffer, memory, and the program beside the C it mirrors),
   the same model and nothing more; and ch01 puts it first, before clang's fragments, with the
   two microscopes named.
+- An AArch64 run on every push: GitHub's Arm runner runs the whole check (the fragments must
+  come out identical there, which found and fixed a host-dependent clang default), and keeps a
+  desk report of what the ordering kernels showed on that machine as the job's summary.
+- An editorial pass by simulated readers: a systems expert asked to find every statement
+  simplified enough to mislead, and a strong programmer without memory-model background asked
+  only to say where they stopped understanding why, over every chapter, the front matter and the
+  appendices. Their findings (the C forward-progress rule misquoted, a volatile race called
+  defined, a store buffer used before it was defined, a glossary entry that described the bug it
+  said it prevented, and some ninety others) are applied as minimal edits and folded notes.
 - The teaching machine, stage two: cache lines in the model, where a program declares them, with
   a state per line per thread, invalidation on every write and a count of round trips; drawn in
   the machine and argued from in ch12 to ch14, where false sharing is two words on one line that
@@ -36,13 +45,14 @@ The working list. PLAN.md says why; this says what is next.
 
 ## Next
 
-1. A reader-led editorial pass: one systems expert asked to find every statement simplified
-   enough to mislead, and one strong programmer without memory-model background asked only to
-   say where they stopped understanding why something was true. The machines have checked
-   what they can; this is what they cannot.
-2. Run the experiments on an AArch64 device, a phone or an Apple laptop, through the browser and
-   the native harness, and record what the ordering chapters show there; the book's biggest
-   latent payoff, since x86-64 hides most of what Part III is about.
+1. A human reader-led editorial pass. The simulated readers' findings are applied; a human
+   systems expert and a human programmer without memory-model background will find what a model
+   reading the same pages does not, and the two personas above are the brief to give them.
+2. Run the experiments on an AArch64 device with a screen: a phone or an Apple laptop, through
+   the browser, where the live panels can be watched. The Arm runner has shown the kernels and
+   the browser smoke test pass there and recorded one desk report; a device in hand would show
+   the ordering chapters' panels under a reader's eyes, and Apple's cores have the longer lines
+   ch13 names.
 3. Run the smoke test in Firefox and in WebKit where a machine with them is available. The
    capability check and the fallback are written for both and have been exercised only in
    Chromium.

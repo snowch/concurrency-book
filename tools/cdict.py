@@ -55,7 +55,7 @@ ENTRIES = {
     ),
     "_Atomic": (
         "c11",
-        "A type qualifier: every access to the variable is one indivisible step, and the compiler may not fold, hoist or reorder those accesses as it does plain ones.",
+        "A type qualifier: every access to the variable is one indivisible step that another thread may observe, which the language promises for no plain access.",
         "ch03 for what that buys and what it does not; ch07 for the compiler's side.",
     ),
     "atomic_load_explicit": (

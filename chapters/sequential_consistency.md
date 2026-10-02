@@ -45,11 +45,11 @@ finish before the other starts; thread A tallies the pair of loaded values:
 :end-before: CM_EXPORT("cm_reset")
 ```
 
-Four outcomes are possible by interleaving. If A's store came first, B's load sees it; if B's
-store came first, A's load sees it; both stores can come before both loads, and both loads see
-a one. The outcome where both loads see a zero needs each thread's load to run before the other
-thread's store, and each thread's store before its own load, which no interleaving provides.
-That is the outcome the panel counts.
+There are four outcomes, and interleaving produces three of them. If A's store came first, B's load
+sees it; if B's store came first, A's load sees it; both stores can come before both loads, and
+both loads see a one. The outcome where both loads see a zero needs each thread's load to run
+before the other thread's store, and each thread's store before its own load, which no interleaving
+provides. That is the outcome the panel counts.
 
 ## Run it
 
@@ -64,7 +64,7 @@ Try these, in order:
 
 1. **Run it with *volatile*.** On an x86-64 device with more than one core, expect *Both loaded zero* above zero. How far above is this run's observation, not a rate. Nothing
    interleaved those four operations; the processor did something else, which
-   [ch14](#store-buffers-and-visibility) names. On an AArch64 device the count is there too.
+   [ch14](#store-buffers-and-visibility) names. On an AArch64 device the count may be there too.
 2. **Switch to *seq_cst*.** Zero, every run. Each thread's store is now visible before its own
    load, and the outcome is gone.
 3. **Switch to *relaxed*, then *release-acquire*.** In this browser both show zero as well, and
@@ -124,8 +124,7 @@ The four versions of thread A's half:
 
 **x86-64** is the one to read first. The volatile, relaxed and release-acquire versions are the
 same two instructions: `mov` to store, `mov` to load. The sequentially consistent version stores
-with `xchg`, an atomic exchange, whose implicit lock the architecture defines as a full barrier:
-the store is visible before anything after it runs. On the cores the book knows, that means
+with `xchg`, an atomic exchange, whose implicit lock the architecture defines as a full barrier, a fence in [ch11](#fences)'s sense and not the barrier a trial starts at: the store is visible before anything after it runs. On the cores the book knows, that means
 draining the store buffer. One instruction changed, and the outcome disappears. The compiler could
 have emitted a `mov` followed by `mfence`; on current cores `xchg` is cheaper, and for ordinary
 stores and loads it orders the same.
@@ -151,10 +150,11 @@ ordering: seq_cst
 ```
 
 The default ordering in C and C++, when none is written, is sequentially consistent. That is a
-sensible default: it is the one whose programs can be reasoned about as interleavings, and the
-fragments show its cost is one exchange per store on x86-64, and a fence per access on RISC-V. The
-weaker orderings exist for programs that know they do not need the single order, such as every
-handover in [ch08](#acquire-and-release), and every counter in [ch03](#atomic-operations).
+sensible default: a program whose every shared access is an atomic with this ordering can be
+reasoned about as interleavings, and the fragments show its cost is one exchange per store on
+x86-64, and fences around every access on RISC-V. The weaker orderings exist for programs that know
+they do not need the single order, such as every handover in [ch08](#acquire-and-release), and
+every counter in [ch03](#atomic-operations).
 
 ## Break it again
 
@@ -174,8 +174,7 @@ strong instructions. The native fragments and the harness can, and
 :class: model
 
 **Sequential consistency is one order of everything.** Each thread's operations in program order,
-every load seeing the last store before it. Interleaving reasoning is valid under it and under
-nothing weaker.
+every load seeing the last store before it. Interleaving reasoning is valid for a program whose shared accesses are all sequentially consistent atomics, and under nothing weaker.
 
 **Release and acquire order around a flag; they do not order a store before this thread's own
 later load of another variable.** That is the gap, and the store-buffer test is the program that
@@ -188,8 +187,7 @@ nothing extra on AArch64 for this pair.
 ## What this cannot tell you
 
 **Whether release-acquire is enough for your program.** The test is whether any thread stores
-and then loads a different variable and needs the two ordered. Most programs do not; locks and
-handovers do not. The ones that do are usually implementing a lock.
+and then loads a different variable and needs the two ordered. Most programs do not; a handover does not, and neither does code that takes a lock. The ones that do are usually implementing one.
 
 **What the browser's host does with a relaxed atomic.** The engine emits the strong instruction,
 whichever host. The native fragments are the only view.

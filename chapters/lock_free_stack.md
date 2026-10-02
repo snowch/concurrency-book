@@ -11,11 +11,15 @@ How can many threads push and pop one stack with no lock?
 
 Every structure so far was one word: a counter, a flag, a lock. A stack is many words linked
 together, and Part II's answer would be to put a lock around it. A lock has costs this book has
-measured, spinning or sleeping, and one it has not: a thread that holds the lock and stops, for
-a page fault, a signal, or the end of its time slice, stops everyone. A lock-free structure has
-no such thread. Some thread always makes progress, whatever the others do, because no thread
-holds anything the others need. The price is that every change to the structure must be one
-compare-and-swap, and this chapter pays it for the simplest structure there is.
+measured, spinning or sleeping, and one it has not: a thread that holds the lock and stops, for a
+page fault, a signal, or the end of its time slice, stops everyone. A lock-free structure has no
+such thread. Some thread always makes progress, whatever the others do, because no thread holds
+anything the others need. The price is that no thread may be left holding a change half made that
+the others cannot finish, which for this stack means every change is one compare-and-swap; this
+chapter pays it for the simplest structure there is. Two plain steps would not do: between them the
+structure is half changed, and a thread that stops there leaves it so, which the others must wait
+out, a lock by another name, unless the change is written so that they can finish it, as the queue
+[ch19](#lock-free-queue) cites does.
 
 ## The smallest program
 
@@ -39,8 +43,17 @@ still the one it read:
 ```
 
 Each is [ch04](#compare-and-swap)'s loop with a different decision inside. The `release` on the
-push's swing and the `acquire` on the pop's are [ch08](#acquire-and-release)'s handover: the
-node's `next` is written before the head is swung, and read after it is seen.
+push's swing and the `acquire` on the pop's are [ch08](#acquire-and-release)'s handover: the node's `next` is written before the head is swung, and read after it is seen.
+
+:::{dropdown} Why a compare-and-swap takes two orderings
+:class: library
+`atomic_compare_exchange_weak_explicit` takes one ordering for the case where it swaps and one for
+the case where it does not and only loads the word's current value. The second is an ordering on a
+load, since a failed attempt stores nothing. The pop asks for acquire in both, because either way
+it has read the head and will read a node's `next` through it. The push asks for release on
+success, because that store is what publishes the node, and relaxed on failure, because a failed
+push publishes nothing and goes round again.
+:::
 
 ## Run it
 
@@ -204,8 +217,7 @@ step atomic, the pair not.
 value encodes what the mutation assumed. If the assumption no longer holds, the swap fails and the
 thread reads again.
 
-**Nobody holds anything.** A thread that stops between its reads and its swap blocks nobody; its
-swap fails when it resumes.
+**Nobody holds anything.** A thread that stops between its reads and its swap blocks nobody; its swap fails when it resumes if the head changed while it was stopped, and succeeds, late, if it did not.
 
 **The assumption here is "the top is still this node".** It holds as long as a popped node is
 never pushed again. The next chapter pushes one again.

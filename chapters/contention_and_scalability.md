@@ -19,8 +19,9 @@ price of atomicity when nobody is contending for it.
 
 ## The smallest program
 
-Three ways to count. One atomic counter every worker shares; an atomic counter per worker, each
-on a line of its own; and a plain counter per worker, likewise alone on its line:
+Three ways to count. One atomic counter every worker shares; an atomic counter per worker,
+sixty-four bytes from the next, which is a line of its own on most cores and half a line on the
+cores ch13 named; and a plain counter per worker, likewise:
 
 ```{literalinclude} ../experiments/contention/contention.c
 :language: c
@@ -47,7 +48,7 @@ Try these, in order:
 
 1. **Run it and read the three charts left to right.** *One shared*: the rate falls as workers are
    added, often to a small fraction of one worker's rate by the time the cores are all busy.
-   *One each*: the rate rises with the workers, about linearly while there are cores to run them.
+   *One each*: the rate rises with the workers, about linearly while there are cores to run them; on a core with longer lines, pairs of workers share one, and the curve bends for ch13's reason.
    *One each, plain*: the same shape, and higher by the cost of an uncontended atomic.
 2. **Note where the curves bend.** The foot of the panel says how many logical cores the device
    reports; two of them may be one core, so a curve may bend before that count. Past it, workers
@@ -60,6 +61,15 @@ Try these, in order:
 4. **Raise the increments** if the one-worker runs are too short to measure well. A run of a few
    milliseconds is dominated by the wake-up from the barrier and the message that reports each
    worker's result; the ratios steady as the runs lengthen.
+
+:::{dropdown} What a logical core is
+:class: hardware
+Some cores run two threads at once, sharing one core's arithmetic units and cache, and the
+operating system reports each of the two as a core of its own: a logical core. The browser passes
+that count on, so a device that reports eight may have four cores that each run two threads. Two
+workers on the two halves of one core share its pipeline and its cache, so a curve can bend at
+half the count the foot of the panel shows.
+:::
 
 ## What the source hides
 
@@ -74,8 +84,13 @@ own line, nothing moves, and the rate is the sum of the cores' rates. The plain 
 than the atomic one by the cost of a locked instruction that locks nothing anyone else wants: on
 x86-64 the `lock inc` the fragment shows is a full barrier by the instruction set's rules, and a
 core that keeps that promise by draining its store buffer makes it many times the cost of the plain
-`inc` beside it. That cost is the microarchitecture's, and the two per-worker curves are its
-measure.
+`inc` beside it. That cost is the microarchitecture's, and the two per-worker curves measure it for
+whatever instruction your engine emitted for the sequentially consistent WebAssembly add: on x86-64
+a `lock` prefixed one like this; on AArch64 one that also carries the acquire and release the
+relaxed C did not ask for. On AArch64 and RISC-V the native fragments show no barrier and the gap
+remains, for a reason no fragment shows: an atomic read-modify-write cannot wait in the store
+buffer of [ch14](#store-buffers-and-visibility), it needs the line before it can complete, while a
+plain store leaves for the buffer and the core moves on at once.
 
 The lesson is the one every scalable design follows: share nothing on the hot path, and combine
 at the end. A statistics counter per thread, summed when read. A per-core free list. A reduction
@@ -143,8 +158,7 @@ that rises is the price of being right on many.
 :::{div}
 :class: model
 
-**A shared word's rate falls as writers are added.** Each write must take the line; the time per
-write grows with the number of cores that want it; the total rate goes down.
+**A shared word's rate falls as writers are added.** Each write must take the line, and only one core can hold it, so the total rate is at best one write per handover, far below one worker's; it falls further as the handovers lengthen with more cores wanting the line.
 
 **A word per writer scales with the cores.** Nothing moves between caches, and the rate is the sum
 of the cores' rates, up to the core count.

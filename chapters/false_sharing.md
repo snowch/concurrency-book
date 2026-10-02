@@ -10,7 +10,7 @@ title: False sharing
 Why do two threads that never touch the same variable slow each other down?
 
 [ch12](#cache-coherence) ended on a result that looked wrong: four workers with four counters of
-their own, side by side in memory, ran about as slowly as four workers on one counter, on the device you ran it on. They shared
+their own, side by side in memory, ran about as slowly as four workers on one counter on most devices, and the note under the bars said what yours did. They shared
 nothing in the program. They shared a cache line, and the protocol of ch12 does not know the
 difference. This chapter is about the most common performance bug in multithreaded code that
 is correct, and about the fix, which is empty space.

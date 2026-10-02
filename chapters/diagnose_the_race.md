@@ -75,8 +75,15 @@ pair not. The check reads one seat; the decrement subtracts one, atomically, fro
 count holds by then, which may be zero. Atomicity belongs to an operation, and the decision
 needs two.
 
-The fix is to make the decision part of the act: take the seat only if the count is still what the
-check saw, which is [ch04](#compare-and-swap)'s loop. A failed compare-and-swap means the count
+The compare-and-swap version:
+
+```{literalinclude} ../experiments/challenge/challenge.c
+:language: c
+:start-at: /* By compare-and-swap
+:end-before: /* Under a lock
+```
+
+The fix is to make the decision part of the act: take the seat only if the count is still what the check saw, which is [ch04](#compare-and-swap)'s loop. A failed compare-and-swap means the count
 changed in the window or, with the weak form the kernel uses, that the attempt must be made again;
 the loop reads the new count and decides again, and when the count reads zero it refuses. Or, with
 a lock, make the check and the act one critical section, as in [ch05](#test-and-set-and-spinlocks),
@@ -161,8 +168,15 @@ own.
 
 ## Break it again
 
-The atomic version is the broken one that looks fixed, and it is the version most code reviews
-pass. Every access is atomic, there is no data race in the language's sense, a thread sanitiser
+Here it is, the version most code reviews pass:
+
+```{literalinclude} ../experiments/challenge/challenge.c
+:language: c
+:start-at: /* Every access atomic
+:end-before: /* By compare-and-swap
+```
+
+The atomic version is the broken one that looks fixed, and it is the version most code reviews pass. Every access is atomic, there is no data race in the language's sense, a thread sanitiser
 reports nothing, and the office oversells. The book's model says why in one sentence: atomicity
 is a property of one operation, and a decision spans two. Then the second break, which the
 kernel does not include and the model predicts: fix the count with compare-and-swap and record

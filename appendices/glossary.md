@@ -28,7 +28,7 @@ atomic increment costs what ch12 measures. [ch12](#cache-coherence)
 
 **Check-then-act.** A decision made from a value read earlier, acted on after other threads may
 have changed it: the shape of the booking office's bug. Why it matters here: it is the shape of the
-final challenge, and the bug that atomics alone cannot fix. [ch25](#diagnose-the-race)
+final challenge, and the bug that making each access atomic cannot fix. [ch25](#diagnose-the-race)
 
 **Coherence.** The property that every core sees the stores to one variable in one order, kept by
 the protocol between the caches. Why it matters here: it is why every core agrees about one
@@ -43,8 +43,7 @@ memory, set by two response headers; the book's service worker provides them. Wh
 Without it the browser withholds shared memory, and a page offers only its trace and its desk
 commands. [ch22](#webassembly-threads)
 
-**Data race.** Two threads making plain accesses to the same variable, at least one writing, with
-nothing to order them. In C it is undefined behaviour; in WebAssembly it has a defined but weak
+**Data race.** Two threads accessing the same variable, at least one writing and at least one of them plain, with nothing to order them. In C it is undefined behaviour; in WebAssembly it has a defined but weak
 meaning. Why it matters here: it is what the language declines to define, so the compiler may
 assume it never happens. [ch02](#two-threads-one-variable)
 
@@ -54,7 +53,7 @@ cost of coherence paid for nothing, and the reason the kernels pad their counter
 [ch13](#false-sharing)
 
 **Fence.** An operation that orders this thread's accesses before it against those after it, as
-other threads see them, touching no variable; an instruction on some targets, nothing on others.
+other threads see them, touching no variable; an instruction on some targets; on others, for the weaker orderings, a constraint on the compiler alone.
 Why it matters here: it is how a group of accesses is ordered at once, where putting the ordering
 on each access will not do. [ch11](#fences)
 
@@ -69,7 +68,7 @@ thing a race lacks. [ch08](#acquire-and-release)
 
 **Hazard pointer.** A word per reader naming the record it is about to read, which a writer checks
 before reusing a record. Why it matters here: it is how a reader stops a writer from freeing what
-it holds, at the price of a store per read. [ch18](#memory-reclamation)
+it holds, at the price of a sequentially consistent store and a second load per read. [ch18](#memory-reclamation)
 
 **Lock-free.** A structure some thread always makes progress on, whatever the others do: no lock,
 and no thread can block the rest by stopping. Why it matters here: it is the promise ch16's stack
@@ -80,7 +79,7 @@ both wrote the same new one. Why it matters here: it is the first bug in the boo
 every atomic read-modify-write exists to prevent. [ch02](#two-threads-one-variable)
 
 **Lost wake-up.** A release that notifies before the waiter has gone to sleep, so the waiter sleeps
-on a lock that is free. A wait that compares before sleeping prevents it. Why it matters here: it
+on a lock that is free. A wait that compares and sleeps in one step prevents it. Why it matters here: it
 is why a sleeping lock must compare and sleep in one step, which ch06 and ch22 show.
 [ch06](#from-spinlock-to-mutex)
 
@@ -98,8 +97,7 @@ Plain, it is three operations however many instructions it takes; atomic, it is 
 step. Why it matters here: it is what x++ is, and the window inside it is where every lost update
 happens. [ch01](#what-x-plus-plus-does)
 
-**Relaxed.** The ordering that promises atomicity, the compiler's honesty and one order per
-variable, and nothing about any other variable. Why it matters here: it is the cheapest atomic and
+**Relaxed.** The ordering that promises atomicity, the compiler's honesty (every access in the source is an access in the code) and one order per variable, and nothing about any other variable. Why it matters here: it is the cheapest atomic and
 the one most often chosen by mistake, because it promises nothing about other variables.
 [ch09](#relaxed-atomics)
 
@@ -115,14 +113,13 @@ come apart. [ch19](#lock-free-queue)
 word per worker's holds. Why it matters here: it is the shape the contention chapter draws, and the
 reason to share nothing on the hot path. [ch21](#contention-and-scalability)
 
-**Sequential consistency.** One order of every thread's operations, each in program order, every
-load seeing the last store before it. The strongest ordering, and C's default when an atomic
+**Sequential consistency.** One order of every sequentially consistent operation, in each thread's program order, every such load seeing the last such store before it. The strongest ordering, and C's default when an atomic
 operation names no ordering. Why it matters here: it is the ordering that makes the store-buffer
 outcome impossible, and the one WebAssembly's atomics always use. [ch10](#sequential-consistency)
 
 **Shared memory.** Memory more than one thread can read and write. In the laboratory, one
 WebAssembly memory every worker's instance imports. Why it matters here: it is the whole subject of
-the book: the one thing threads have that processes do not. [ch02](#two-threads-one-variable)
+the book: the thing threads have by default and processes only by arrangement. [ch02](#two-threads-one-variable)
 
 **Spinlock.** A lock whose waiters loop, on a load or an exchange, until the word reads free and an
 exchange takes it. Why it matters here: it is the first lock in the book, built from one exchange,
@@ -148,8 +145,7 @@ other volatile accesses, and nothing about other threads. Why it matters here: i
 readers reach for first, and the one that fixes ch07's loop and nothing after it.
 [ch07](#the-compiler-is-part-of-the-story)
 
-**Weak ordering.** AArch64's and RISC-V's memory model: any two accesses to different addresses may
-be reordered unless an instruction orders them. Why it matters here: it is why the publication test
+**Weak ordering.** AArch64's and RISC-V's memory model: any two accesses to different addresses may be reordered unless an instruction, or a dependency on an earlier load, orders them. Why it matters here: it is why the publication test
 fails on Arm devices, and why Part III's orderings are not optional. [ch15](#x86-is-not-the-model)
 
 **Worker.** A thread in the laboratory: a Web Worker running the kernel on the shared memory. Why

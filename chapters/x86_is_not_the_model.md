@@ -43,7 +43,7 @@ Try these, in order:
 
 1. **Run it, and note what your device is.** The foot of the panel says how many cores; it cannot
    say which architecture, so you have to. On x86-64, *volatile* shows *both loaded zero* and
-   nothing else surprising. On AArch64 the same run shows it too;
+   nothing else surprising. On AArch64 the same run can show it too;
    reordering a load past a load, or a store past a store, needs a program with two of a kind,
    which this test is not.
 2. **Switch the ordering to *release-acquire*.** On every device in this browser, zero: the
@@ -57,24 +57,27 @@ Try these, in order:
 ## What the source hides
 
 The source hides which reorderings the target will make. Here they are, for the three native
-targets and WebAssembly, for two accesses to different addresses with nothing ordering them:
+targets and WebAssembly, for two ordinary loads or stores to different addresses with nothing
+ordering them:
 
 | Reordering | x86-64 | AArch64 | RISC-V | WebAssembly |
 |---|---|---|---|---|
-| A store overtaken by a later load | allowed | allowed | allowed | plain accesses: the host's; atomics: never |
-| A store overtaken by a later store | never | allowed | allowed | plain: the host's; atomics: never |
-| A load overtaken by a later load | never | allowed | allowed | plain: the host's; atomics: never |
-| A load overtaken by a later store | never | allowed | allowed | plain: the host's; atomics: never |
+| A store overtaken by a later load | allowed | allowed | allowed | plain accesses: the engine's, then the host's; atomics: never |
+| A store overtaken by a later store | never | allowed | allowed | plain: the engine's, then the host's; atomics: never |
+| A load overtaken by a later load | never | allowed | allowed | plain: the engine's, then the host's; atomics: never |
+| A load overtaken by a later store | never | allowed | allowed | plain: the engine's, then the host's; atomics: never |
 
 x86-64 is *total store order*: stores reach memory in program order, loads are performed in program
-order, and only the store buffer breaks the symmetry. AArch64 and RISC-V are *weakly ordered*: any
-two accesses to different addresses may be reordered unless an instruction says otherwise, and the
-instructions that say otherwise are the ones the fragments have been showing. WebAssembly's
-position is the one this book has repeated since [ch03](#atomic-operations): its atomics are
-sequentially consistent and reorder nothing; its plain accesses inherit whatever the engine and
-then the host do with them. A WebAssembly program is weakly ordered on an Arm device and strongly
-ordered on an x86-64 one, and a program that is only correct on the laptop has a bug the laptop
-cannot show.
+order, and only the store buffer breaks the symmetry. x86-64's *never* is for the write-back
+accesses the fragments show; streaming stores and string instructions have rules of their own.
+AArch64 and RISC-V are *weakly ordered*: any two accesses to different addresses may be reordered
+unless an instruction, or a dependency between them, says otherwise, and the instructions that say
+otherwise are the ones the fragments have been showing. WebAssembly's position is the one this book
+has repeated since [ch03](#atomic-operations): its atomics are sequentially consistent and reorder
+nothing; its plain accesses inherit whatever the engine and then the host do with them. A
+WebAssembly program's plain accesses are weakly ordered on an Arm device and, once the engine has
+had its say, strongly ordered on an x86-64 one, and a program that is only correct on the laptop
+has a bug the laptop cannot show.
 
 Two consequences for the handover of ch08. On x86-64, a relaxed flag publishes its data correctly
 by accident: the compiler happened to keep the stores in order, and the architecture then keeps

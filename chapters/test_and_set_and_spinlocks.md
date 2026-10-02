@@ -76,11 +76,14 @@ Try these, in order:
 
 The exchange is an atomic read-modify-write like ch03's add: read the word, write a one, return
 what was read, indivisibly. What the loop hides is that a failed attempt is not free. An exchange
-is a write, and on a core with the usual coherent caches a write takes the cache line into the
-writing core's cache in exclusive state, away from the holder. That is the microarchitecture, which
-no instruction set promises and [ch12](#cache-coherence) measures. A spinning waiter that exchanges
-in a tight loop is pulling the lock's line across the machine on every iteration, and the holder
-has to pull it back to release. Many waiters make this worse than linearly.
+is a write even when it writes the one that was already there: the core performs the store whether
+or not the value differs. On a core with the usual caches, a write first takes the cache line into
+the writing core's cache and out of every other, which is what *exclusive state* means, away from
+the holder. Caches that move a line like this, so that every core sees the same order of writes to
+a word, are called coherent; [ch12](#cache-coherence) measures them. That is the microarchitecture,
+which no instruction set promises and [ch12](#cache-coherence) measures. A spinning waiter that
+exchanges in a tight loop is pulling the lock's line across the machine on every iteration, and the
+holder has to pull it back to release. Many waiters make this worse than linearly.
 
 Test-then-test-and-set changes what the waiter does while it waits. Reading does not take the
 line away: every waiter can hold a shared copy and spin on it without disturbing the holder. Only
@@ -188,9 +191,9 @@ then a store of one, and the lock is gone:
 :end-before: /* Release: a plain store
 ```
 
-This panel is locked to it. Run it and *Observed* falls short: two workers saw the lock free at
-the same moment, both stored a one, and both ran the critical section at once, losing increments
-in exactly ch02's way.
+This panel is locked to it. Run it: on a device with more than one core, *Observed* is likely to
+fall short: two workers saw the lock free at the same moment, both stored a one, and both ran the
+critical section at once, losing increments in exactly ch02's way.
 
 ```lab
 experiment: spinlock

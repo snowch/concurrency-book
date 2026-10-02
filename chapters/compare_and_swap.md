@@ -31,10 +31,10 @@ counter from ch03, incremented by it:
 :end-before: /* Take the lock
 ```
 
-Read the loop as a conversation with the memory. "I saw zero; make it one." Either "done" or
-"it is three now". "I saw three; make it four." Every retry is a contest this thread lost: another
-thread's compare-and-swap landed between this thread's load and its attempt. The function counts
-the retries, because the count is the chapter's second result.
+Read the loop as a conversation with the memory. "I saw zero; make it one." Either "done" or "it is
+three now". "I saw three; make it four." In the browser every retry is a contest this thread lost:
+another thread's compare-and-swap landed between this thread's load and its attempt. The function
+counts the retries, because the count is the chapter's second result.
 
 The same instruction, used on a different word with a different intent, is a lock. The lock is
 one word, zero when free. To take it: "I saw zero; make it one." If that fails, somebody holds
@@ -70,8 +70,7 @@ Try these, in order:
    *Most by one worker* shows how unevenly the contests fall. Some workers lose far more than
    their share, which is the first hint of the fairness question [ch05](#test-and-set-and-spinlocks)
    measures.
-3. **One worker.** No retries at all: a compare-and-swap with nobody to contest it always
-   succeeds on the first try, and costs about what an atomic add costs.
+3. **One worker.** In the browser, no retries at all: a compare-and-swap with nobody to contest it succeeds on the first try, and costs about what an atomic add costs.
 4. **Open the deterministic trace.** Under *alternate*, two threads load the same value, both
    compute from it, the first compare-and-swap succeeds, the second fails and the trace shows the
    loser going back to the load, seeing the new value and succeeding on the next attempt. Nothing
@@ -83,10 +82,11 @@ Try these, in order:
 ## What the source hides
 
 The compare-and-swap is one operation with four parts inside: load the word, compare it with the
-expected value, store the new value if they matched, and report which happened. The whole thing
-is indivisible with respect to other cores, exactly as ch03's atomic add was, and for the same
-reasons. What the loop around it hides is that a retry restarts from the load. The trace shows
-one contest:
+expected value, store the new value if they matched, and report which happened. The whole thing is
+indivisible with respect to other cores, exactly as ch03's atomic add was, and for the same
+reasons. What the loop around it hides is that a retry restarts from a fresh value: the failed
+compare-and-swap hands back what the word holds, and the model draws that as a load. The trace
+shows one contest:
 
 ```{include} _generated/cas-trace-alternate.md
 ```
@@ -161,13 +161,15 @@ the value the word held. The browser's engine lowers it to a compare-and-swap of
 which may or may not be one of the above.
 
 Two kinds of failure appear in these fragments, and the C hides the distinction. A compare-and-swap
-can fail because the value differed, which is the contest the loop expects. On AArch64 and RISC-V
-it can also fail because the store-conditional lost its reservation for a reason that has nothing
-to do with the value: an interrupt, or another core's write to a nearby word inside the same
-reservation granule, whose size the instruction set leaves to the implementation. That is why the C
-says `weak`: a weak compare-and-swap may fail spuriously, and the loop around it must tolerate
-that, which it does, because it retries on any failure. On these two targets the `strong` form
-hides a loop inside itself; on x86-64 it needs none.
+can fail because the value differed, which is the contest the loop expects. On AArch64 it can also
+fail because the store-exclusive lost its reservation for a reason that has nothing to do with the
+value: an interrupt, or another core's write to a nearby word inside the same reservation granule,
+whose size the instruction set leaves to the implementation. RISC-V's `sc.w` can fail the same way,
+but clang retried it in a loop of its own around the store-conditional, so the C never sees it.
+That is why the C says `weak`: a weak compare-and-swap may fail spuriously, and the loop around it
+must tolerate that, which it does, because it retries on any failure. On AArch64 the `strong` form
+hides a loop inside itself, as the RISC-V fragment above already does for the weak one; on x86-64
+it needs none.
 
 ## Fix one thing
 
@@ -258,8 +260,7 @@ chapter has not said why. Part III does.
 
 **Whether a retry was a contest or a spurious failure.** In the browser a retry is always a
 contest: `i32.atomic.rmw.cmpxchg` cannot fail spuriously, and any spurious failure on the host is
-retried inside the engine, out of the kernel's sight. Only the native build on AArch64 or RISC-V
-counts a spurious failure as a retry. The native fragments show where each kind can arise.
+retried inside the engine, out of the kernel's sight. Only the native build on AArch64 counts a spurious failure as a retry; on RISC-V the fragment retries its store-conditional before the C can see it. The native fragments show where each kind can arise.
 
 ## Where to go next
 

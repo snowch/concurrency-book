@@ -68,14 +68,13 @@ Try these, in order:
 1. **Run it with the plain flag.** The run does not finish. The setter sets the flag after its busy work, which *Elapsed* on a volatile run measures; the waiter never notices. After four seconds the page stops the workers
    and says so. Nothing about the processor is to blame: *At the machine* shows that the loop
    the compiler emitted reads the flag once, before the loop, and if it read zero branches to itself forever.
-2. **Set the busy steps to zero and run again.** Still no end. Even a flag that is set before the
+2. **Set the busy steps to zero and run again.** Usually still no end. Even a flag that is set before the
    waiter starts looping does not help if the waiter's one read happened first, and the barrier
    makes the two workers start together, so it usually does.
 3. **Switch the flag to *volatile*.** The loop ends on the value one, and *Elapsed* is about how
    long the setter's busy work took. The compiler reads a volatile variable every time the
    source does.
-4. **Switch the flag to *atomic*.** The same result. On most targets the same instructions, as
-   the fragments show. The difference between volatile and atomic is not in this loop; it is in
+4. **Switch the flag to *atomic*.** The same result. On most targets the same loads, as the fragments show. The difference between volatile and atomic is not in this loop; it is in
    what else the compiler and the processor promise, which is the rest of this chapter and Part
    III.
 5. **Open the deterministic trace.** The trace models the loop the compiler emitted, not the
@@ -85,8 +84,9 @@ Try these, in order:
 
 ## What the source hides
 
-The source says "read the flag until it is non-zero". The compiler is allowed to read it once.
-Two rules of the language make that legal, and they are the reason this chapter exists.
+The source says "read the flag until it is non-zero". The compiler is allowed to read it once. One
+rule of the language makes that legal, a second lets another compiler go further, and the two are
+the reason this chapter exists.
 
 The first is the data race rule from [ch02](#two-threads-one-variable): if another thread writes
 a plain variable while this thread reads it without synchronisation, the program has undefined
@@ -94,25 +94,35 @@ behaviour. The compiler is entitled to assume the program is defined, so it assu
 thread writes `flag` during the loop. Then the value cannot change inside the loop, so one read
 suffices.
 
-The second is the forward-progress rule. A loop with no side effects, no atomic operations, no
-volatile accesses and no calls may be assumed to terminate. Having hoisted the read, the compiler
-is left with a loop whose body does nothing and whose condition is a register, and it may treat
-the case where the register is zero as unreachable, or emit an empty loop for it, as clang did
-here. Other compilers delete the loop entirely and return at once, which is a different wrong
-answer to the same question.
+The second is the forward-progress rule. A loop whose condition is not a constant, with no input or
+output, no volatile access and no atomic or synchronising operation, may be assumed to terminate.
+Having hoisted the read, the compiler is left with a loop whose body does nothing and whose
+condition is a register, and it may treat the case where the register is zero as unreachable, or,
+using only the first rule, emit an empty loop for it, as clang did here. Other compilers delete the
+loop entirely and return at once, which is a different wrong answer to the same question.
 
 The trace of the emitted loop:
 
 ```{include} _generated/compiler-trace-plain.md
 ```
 
-`volatile` disables the first assumption for that variable, and only that assumption. It says:
-every read in the source is a read in the code, every write a write, in program order relative to
-other volatile accesses. It was designed for memory-mapped hardware registers, where a read has a
-visible effect, and it says nothing about other threads, about caches, or about the order of this
-variable's accesses against any non-volatile variable. `_Atomic` says the first thing and the
-rest: another thread may write this, so every read is a read, and the orderings of Part III may
-be asked for.
+`volatile` takes the first assumption away from the compiler for that variable, and only that: in C
+the loop is still a data race, and still undefined. The loop ends here because clang emitted the
+reads and the hardware delivered the store, neither of which the language promised. It says: every
+read in the source is a read in the code, every write a write, in program order relative to other
+volatile accesses. It was designed for memory-mapped hardware registers, where a read has a visible
+effect, and it says nothing about other threads, about caches, or about the order of this
+variable's accesses against any non-volatile variable. `_Atomic` says the first thing and the rest:
+another thread may write this, so every read is a read, and the orderings of Part III may be asked for.
+
+:::{dropdown} What a memory-mapped hardware register is
+:class: hardware
+A device such as a timer or a network card presents its control words at memory addresses. A
+load from one may start something in the device, and two loads may return two different values
+with no store between them, so the compiler must perform every one the source writes. Those
+words are called the device's registers; they are not the core's registers of
+[ch01](#what-x-plus-plus-does). `volatile` was made for them.
+:::
 
 ## At the machine
 
@@ -185,14 +195,14 @@ which is a choice, not a meaning. Only WebAssembly distinguishes them in the ins
 `i32.load` for the volatile flag, `i32.atomic.load` for the atomic one, because WebAssembly's
 atomic loads carry an ordering the plain ones do not.
 
-So on three of the four targets the two loops are the same instructions, and the difference between
-`volatile` and `_Atomic` is in what the language promised and the compiler must keep. For this
-loop, which reads one word and nothing else, the promises coincide. The moment the waiter reads a
-second variable after the flag, they part: an atomic load with acquire ordering, which
-[ch08](#acquire-and-release) asks for, orders that second read after the flag; neither a volatile
-load nor this relaxed one does, and the compiler, or the processor, may move the second read above
-it, and the compiler, or the processor, may move the second read above it. That is
-[ch08](#acquire-and-release).
+So on three of the four targets the two loops make the same memory accesses, and on two of them
+they are the same instructions to the letter; the difference between `volatile` and `_Atomic` is in
+what the language promised and the compiler must keep. For this loop, which reads one word and
+nothing else, the promises coincide. The moment the waiter reads a second variable after the flag,
+they part: an atomic load with acquire ordering, which [ch08](#acquire-and-release) asks for,
+orders that second read after the flag; neither a volatile load nor this relaxed one does, and the
+compiler, or the processor, may move the second read above it, and the compiler, or the processor,
+may move the second read above it. That is [ch08](#acquire-and-release).
 
 ## Fix one thing
 
@@ -202,7 +212,8 @@ it above. Volatile would also have ended the loop, and it is the wrong fix, beca
 symptom and not the disease. A program that uses volatile for a flag will work until it reads a
 second variable, and then it can fail twice over: the compiler may move the second read above the
 volatile one on any target, and a processor that reorders loads may do the same, in a way no test
-on x86-64 will find.
+on x86-64 will find, because x86-64's instruction set keeps one thread's loads in the order the
+code gives them and AArch64's and RISC-V's do not, which [ch15](#x86-is-not-the-model) is about.
 
 ## Break it again
 
@@ -254,8 +265,7 @@ registers.
 **`_Atomic` means "another thread may touch this".** Every access is an access, and the orderings
 of Part III can be asked for.
 
-**For a single relaxed flag the two produce the same instructions on three of the four targets. The difference is the promise, and the
-promise is what breaks first when the program grows.**
+**For a single relaxed flag the two produce the same loads on three of the four targets, and the same instructions on two. The difference is the promise, and the promise is what breaks first when the program grows.**
 :::
 
 ## What this cannot tell you
@@ -264,9 +274,7 @@ promise is what breaks first when the program grows.**
 some versions and settings deletes the loop and returns. The fragments show one compiler's
 choice, as every fragment in this book does.
 
-**How WebAssembly treats the race.** In WebAssembly a plain load that races with a store has a
-defined, weak meaning, so the engine could not have removed the loop had the compiler left it in.
-The loop was removed before the WebAssembly existed, by the C compiler, under C's rules. The
+**How WebAssembly treats the race.** In WebAssembly a plain load that races with a store has a defined, weak meaning, but no promise that it ever sees the store: an engine may hoist a plain load out of a loop too, and only an atomic load is promised the store in finite time. Here the engine never had the choice. The load was hoisted before the WebAssembly existed, by the C compiler, under C's rules. The
 layer that broke the program is the one above the instruction set.
 
 **Why the volatile fix is wrong.** This loop cannot show it, because it reads one variable. The

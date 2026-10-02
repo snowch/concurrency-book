@@ -14,12 +14,12 @@
 | `memory.atomic.wait32` (atomic or ordering) | If the 32-bit word equals the expected value, sleeps until a notify on the address or the timeout; pushes why it woke. | The sleep half of ch06's sleeping lock: the compare and the sleep are one step, so no wake-up can be lost between them. |
 | `block` | Opens a block; a branch to it leaves it. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `br` | Branches to the block or loop at the named depth: out of a block, back to the start of a loop. | Control flow: what a retry loop, a spin or a wait is made of. |
-| `br_if` | Branches if the value on top of the stack is not zero. | The back edge of a retry loop or a spin. |
+| `br_if` | Branches if the value on top of the stack is not zero. | The branch back to the top of a retry loop or a spin. |
 | `br_table` | Branches to one of several depths, chosen by the value on top of the stack. | Control flow: what a retry loop, a spin or a wait is made of. |
-| `call` | Calls a function. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `call` | Calls a function. | A call: what the called function does to shared memory is in that function's own listing. |
 | `drop` | Discards the value on top of the stack. | A register copy or a constant: invisible to every other thread. |
-| `end_block` | Closes a block. | Control flow: what a retry loop, a spin or a wait is made of. |
-| `end_loop` | Closes a loop. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `end_block` | Closes a block; the specification's text format spells it end. | Control flow: what a retry loop, a spin or a wait is made of. |
+| `end_loop` | Closes a loop; the specification's text format spells it end. | Control flow: what a retry loop, a spin or a wait is made of. |
 | `global.get` | Pushes a global variable's value. | A register copy or a constant: invisible to every other thread. |
 | `i32.add` | Pops two 32-bit values and pushes their sum. | Arithmetic on the stack between a load and a store: the middle of the three steps. |
 | `i32.and` | Pops two 32-bit values and pushes their bitwise and. | Arithmetic in a register: invisible to every other thread. |

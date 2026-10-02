@@ -58,19 +58,27 @@ operation: atomic
 Try these, in order:
 
 1. **Run it.** *Observed* equals *Expected*, and *Lost* is zero. Run it again, with more workers,
-   with fewer increments: always exact. Compare with the same settings and the *plain*
-   operation, which loses.
+   with fewer increments: always exact. Compare with the same settings and the *plain* operation, which can lose.
 2. **Compare the time.** Switch between *plain* and *atomic* with the same count and watch
    *Elapsed*. The atomic version is slower, and on a device with several cores it can be much
-   slower, because a plain increment can hand its store to the core and move on, while an atomic one
-   must own the line and finish both the read and the write before anything after it, so the
-   cores take turns. That is the microarchitecture: [ch12](#cache-coherence) measures it, and
+   slower, because a plain store can be left behind for the core to finish while the thread runs on, and an atomic increment cannot: the core must have the word's cache line to itself for the whole read-modify-write, and in the browser, where every WebAssembly atomic is sequentially consistent, must also finish before anything after it, so when several cores increment one word they wait for each other. That is the microarchitecture: [ch12](#cache-coherence) measures it, and
    [ch21](#contention-and-scalability) draws it against the number of workers.
 3. **Open the deterministic trace.** With *atomic* selected, press *Run to the end* under any
    schedule. Each increment is one step in the model, so there is no window for another thread's
    step to fall into, and nothing is lost under any schedule.
-4. **Switch the operation to *split*.** The loss is back, in the trace under *alternate* and in
-   the live run. *Break it again*, below, says why.
+4. **Switch the operation to *split*.** The loss is back in the trace under *alternate*, and on most devices in the live run. *Break it again*, below, says why.
+
+
+:::{dropdown} Why a plain store is cheap and an atomic increment is not, for now
+:class: hardware
+A core does not wait for a plain store to reach memory. It puts the store in a queue of its own
+and runs on, and the queue drains when it can; [ch14](#store-buffers-and-visibility) is about
+that queue. An atomic read-modify-write cannot wait in a queue, because its promise is that
+nothing lands between its read and its write: the core must hold the word's cache line, the copy
+that [ch02](#two-threads-one-variable)'s note said moves before each write, and finish both
+halves before it goes on. When several cores want the same line, each waits for the others, and
+that waiting is the time *Elapsed* shows. [ch12](#cache-coherence) measures it.
+:::
 
 ## What the source hides
 
@@ -140,8 +148,7 @@ Under contention the loop can run several times.
 **AArch64 with LSE**, the atomics extension that most AArch64 processors since the mid-tens have,
 has `ldadd`: one instruction that adds to memory, as x86-64's does. The build asked for the
 extension with a target flag, and the conditions line says so; a compiler told to target an older
-core emits the loop above instead. Which one your program gets is a build decision, and
-the two behave the same.
+core emits the loop above instead. Which one your program gets is a build decision, and the two give the same count, though not at the same cost under contention.
 
 **RISC-V** has `amoadd.w`, an atomic memory operation: add the register to the word in memory,
 as one instruction. The destination register is `zero`, so the old value is discarded, as the C
@@ -157,10 +164,12 @@ instruction delivers it, and the book never claims to know.
 The fix was ch02's: replace the three steps by one atomic read-modify-write. What is worth seeing
 here is the cost of the fix, in the panel above: *atomic* against *plain* at the same count, on
 your own device. The atomic increment is slower partly because the instruction costs more alone, on
-x86-64 because the prefix is also a barrier, and mostly because its promise is expensive to keep
-when another core wants the same line at the same moment. One worker alone pays little. Several pay
-for each other. The price of an atomic operation is contention, and a design that puts every
-thread's increment on one word pays it in full; [ch13](#false-sharing) and
+x86-64 because the prefix also makes the core finish every earlier memory access of this thread,
+and the locked one, before it starts any later one, an ordering that [ch15](#x86-is-not-the-model)
+returns to and a different thing from the start barrier in `cm_run`, and mostly because its promise
+is expensive to keep when another core wants the same line at the same moment. One worker alone
+pays little. Several pay for each other. The price of an atomic operation is contention, and a
+design that puts every thread's increment on one word pays it in full; [ch13](#false-sharing) and
 [ch21](#contention-and-scalability) are about paying less.
 
 ## Break it again
@@ -180,7 +189,8 @@ the model loses updates in it:
 ```{include} _generated/counter-trace-split.md
 ```
 
-This panel is locked to the split increment. Run it: the loss is back, on real workers.
+This panel is locked to the split increment. Run it: on most devices the loss is back, on real
+workers.
 
 ```lab
 experiment: counter
@@ -215,13 +225,15 @@ The instructions tell the same story:
 ::::
 
 On AArch64 and RISC-V a relaxed atomic load and a relaxed atomic store are the same instructions as
-a plain load and a plain store: `ldr` and `str`, `lw` and `sw`. An aligned word is read and written
+a plain load and a plain store: `ldr` and `str`, `lw` and `sw`. An aligned word, one whose address
+is a multiple of its size, which is where the compiler places every `int`, is read and written
 whole by those instructions already, so the atomicity of each access costs nothing and the compiler
 emits nothing extra. On x86-64 the compiler went further and merged the atomic load and the atomic
 store into ch01's `inc` without a `lock` prefix: each access is still atomic on its own, and the
 pair is still two accesses with the window between. What the `_Atomic` declaration bought here is a
-promise about each access on its own, and a promise to the compiler that other threads exist, so it
-may not fold or reorder them as it did in ch01. It did not buy a promise about the pair.
+promise about each access on its own, and a signal to the compiler that other threads exist, which
+in practice keeps it from folding or reordering them as it did in ch01; the language itself asks
+only that each store become visible in a reasonable time. It did not buy a promise about the pair.
 WebAssembly is the exception that proves it: `i32.atomic.load` and `i32.atomic.store` are distinct
 instructions from the plain ones, because WebAssembly makes every atomic access sequentially
 consistent, which [ch10](#sequential-consistency) explains, and it still loses the update, because

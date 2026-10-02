@@ -159,7 +159,7 @@ while readers follow the pointer. Used by [ch18](#memory-reclamation).
 | | |
 |---|---|
 | Controls | readers; updates; protection (none or hazard pointers) |
-| Arguments | `a` updates; `b` 0 none, 1 hazard pointers; `c` readers |
+| Arguments | `a` updates; `b` 0 none, 1 hazard pointers; `c` readers; worker 0 is the writer, so a desk run asks for one worker more than readers |
 | Results | result 0 is the reads, result 1 the poisoned reads, result 2 the updates, result 3 the writer's waits |
 | Modes | live, trace, at a desk |
 
@@ -172,7 +172,7 @@ consumers dequeue them through a ring of slots, in three designs. Used by
 | | |
 |---|---|
 | Controls | producers; consumers; items per producer; design (one-to-one ring, claimed positions or sequenced slots) |
-| Arguments | `a` items per producer; `b` 0, 1 or 2 for the design; `c` producers |
+| Arguments | `a` items per producer; `b` 0, 1 or 2 for the design; `c` producers; the workers after them consume |
 | Results | result 0 is the items enqueued, result 1 the dequeues, result 2 unwritten slots read, result 3 out of order, result 4 seen twice, result 5 dropped |
 | Modes | live, at a desk |
 
@@ -184,7 +184,7 @@ record. Used by [ch20](#rcu).
 | | |
 |---|---|
 | Controls | readers; updates; before reuse, the writer reuses at once or waits for a grace period |
-| Arguments | `a` updates; `b` 0 reuse at once, 1 wait; `c` readers |
+| Arguments | `a` updates; `b` 0 reuse at once, 1 wait; `c` readers; worker 0 is the writer, so a desk run asks for one worker more than readers |
 | Results | result 0 is the reads, result 1 the poisoned reads, result 2 the updates, result 3 the grace-period waits |
 | Modes | live, trace, at a desk |
 

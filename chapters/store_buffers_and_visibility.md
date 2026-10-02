@@ -43,12 +43,11 @@ ordering: volatile
 
 Try these, in order:
 
-1. **Run it on an x86-64 device.** *Both loaded zero* is above zero, and the tile says by how much on this device.
+1. **Run it on an x86-64 device.** Expect *Both loaded zero* above zero; the tile says by how much on this device.
    That is the store buffer: each thread's store was in its buffer, invisible to the other core,
    while the thread's load read the other word from the cache. x86-64 reorders nothing else, and
    it reorders this.
-2. **Run it on an AArch64 device**, a phone or a recent Mac, if you have one. The outcome appears there
-   too. This test has one store and one load per thread, so the other reorderings AArch64
+2. **Run it on an AArch64 device**, a phone or a recent Mac, if you have one. The outcome can appear there too. This test has one store and one load per thread, so the other reorderings AArch64
    allows have nothing to act on here; [ch15](#x86-is-not-the-model) lists them.
 3. **Raise the trials to a million.** The count grows with the trials. The fraction is this
    device's and this run's; the last section says why it is not a rate.
@@ -121,9 +120,9 @@ full barrier, which on these cores means the store buffer drains before it compl
 everything after it sees a buffer that is empty.
 
 On **AArch64** the plain `str` and `ldr` carry even fewer promises, and `stlr` and `ldar` carry
-them back. The volatile and relaxed versions are indistinguishable on every native target, and
-on this one point WebAssembly, whose volatile version is the plain `i32.store` and `i32.load`,
-is like the others.
+them back. The volatile and relaxed versions are indistinguishable on every native target. On
+WebAssembly they differ, and only the volatile version, the plain `i32.store` and `i32.load`, is
+like the others.
 
 The browser's own result comes from this WebAssembly as the engine compiled it for the host. The
 engine added no fence, because the WebAssembly asked for none, so the host's own reordering
@@ -143,10 +142,10 @@ lock: workers, ordering
 ordering: seq_cst
 ```
 
-The fix is also the reason sequentially consistent stores cost what they cost. A store that must
-be visible before the next load cannot be buffered past it, and the core waits for the round trip
-that the buffer exists to hide. On x86-64 the price is paid per store; a program that makes every
-store sequentially consistent runs at the speed of its cache misses.
+The fix is also the reason sequentially consistent stores cost what they cost. A store that must be
+visible before the next load cannot be buffered past it, and the core waits for the round trip that
+the buffer exists to hide. With this compiler's mapping the price is paid on the store; a program
+that makes every store sequentially consistent waits for its store buffer to drain at every one.
 
 ## Break it again
 

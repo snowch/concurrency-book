@@ -52,6 +52,15 @@ so that a trial cannot overlap the next:
 :end-before: CM_EXPORT("cm_reset")
 ```
 
+:::{dropdown} Why the acknowledgement is sequentially consistent
+:class: library
+The acknowledgement is the harness, not the experiment. The reader's store of `ack` and the
+writer's load of it use `memory_order_seq_cst`, the strongest ordering the language offers, so
+the writer cannot begin trial `t + 1` until the reader has finished trial `t`, whatever ordering
+the trial itself asked for. [ch10](#sequential-consistency) defines the ordering; until then read
+it as "the strongest".
+:::
+
 ## Run it
 
 Two workers and a hundred thousand handovers.
@@ -82,14 +91,32 @@ Try these, in order:
 ## What the source hides
 
 The writer's two stores go to two different addresses, and nothing in a plain or volatile store
-ties them together. The compiler may emit them in either order, since to a single thread the
-order of two stores to different variables is invisible. The processor may make them visible to
-other cores in either order, for the same reason: a store buffer, a write-combining buffer, or
-two cache lines arriving at different times. The reader's two loads are the same story
-in mirror image: a weakly ordered processor may perform the load of the data before the load of
-the flag, and return a value that was true before the flag was raised.
+ties them together. The compiler may emit them in either order, since to a single thread the order
+of two stores to different variables is invisible. The processor may make them visible to other
+cores in either order, for the same reason: a store buffer, a write-combining buffer, or two cache
+lines arriving at different times. AArch64 and RISC-V are weakly ordered: unless an instruction
+says otherwise, the processor may perform two accesses to different addresses in either order.
+x86-64 is not, and [ch15](#x86-is-not-the-model) draws the table. The reader's two loads are the
+same story in mirror image: a weakly ordered processor may perform the load of the data before the
+load of the flag, and return a value that was true before the flag was raised.
 
-The trace shows the writer's half, with the flag's store reaching memory first:
+:::{dropdown} How a load can run before the branch that guards it
+:class: hardware
+The data's load sits after the loop, so it looks as if it cannot run until the flag's load has
+returned the value the loop waits for. A core does not wait to learn which way a branch goes. It
+guesses, runs the instructions after the branch early, and throws the work away if the guess was
+wrong. When the guess was right, the early load keeps the value it fetched, which may be older
+than the flag the branch then confirmed. On AArch64 and RISC-V a branch between two loads does
+not order them, so the instruction set allows this. An acquire load forbids it: `ldar` tells the
+core that no later load may take its value before this one has. x86-64 keeps loads in order
+whether asked or not, which is why its acquire is a plain `mov`.
+:::
+
+The model gives each thread a store buffer: a queue beside the thread where a store waits before it
+reaches memory, which [ch14](#store-buffers-and-visibility) finds in the hardware. Under *flag
+first* the model lets the second store leave the queue before the first, and the buffer column
+shows what is still waiting. The trace shows the writer's half, with the flag's store reaching
+memory first:
 
 ```{include} _generated/publication-trace-reordered.md
 ```
@@ -137,12 +164,10 @@ The writer's four versions, in one fragment per target. Find the release:
 
 **AArch64** shows the release as an instruction: `stlr`, store-release, where the volatile and
 relaxed versions use a plain `str`. **RISC-V** shows it as a `fence rw, w` before the store: every
-earlier read and write is ordered before this write, as every other hart sees it. **x86-64** shows
-nothing: the release store is the same `mov` as the relaxed one, because x86-64 never reorders a
-store with an earlier store, so the ordering the C asked for is free. **WebAssembly** shows the
+earlier read and write is ordered before this write, as every other hart sees it. A hart is RISC-V's name for a hardware thread, what this book calls a core. **x86-64** shows
+nothing: the release store is the same `mov` as the relaxed one, because x86-64 never lets a store overtake an earlier store or an earlier load, so the ordering the C asked for is free. **WebAssembly** shows the
 volatile version with the flag's store first, as the compiler scheduled it, and every atomic
-version as the same `i32.atomic.store`, because every WebAssembly atomic is sequentially consistent
-and there is no weaker atomic store to emit.
+version as the same `i32.atomic.store`, because every WebAssembly atomic is sequentially consistent, the strongest ordering the language has, which includes the release and which [ch10](#sequential-consistency) defines, and there is no weaker atomic store to emit.
 
 The reader's four versions:
 
@@ -169,9 +194,10 @@ The reader's four versions:
 :::
 ::::
 
-The acquire is `ldar` on AArch64, load-acquire, where the relaxed version spins on a plain `ldr`;
-a `fence r, rw` after the load on RISC-V; a plain `mov` on x86-64, which never reorders a load
-with a later load; and the same `i32.atomic.load` on WebAssembly for every atomic version.
+The acquire is `ldar` on AArch64, load-acquire, where the relaxed version spins on a plain `ldr`; a
+`fence r, rw` after the load on RISC-V; a plain `mov` on x86-64, which never lets a load be
+overtaken by a later load or a later store; and the same `i32.atomic.load` on WebAssembly for every
+atomic version.
 
 ## Fix one thing
 
@@ -198,9 +224,9 @@ Keep the flag atomic and take the ordering away: *relaxed*. The compiler now kno
 reads the flag, and will not fold the loop; but it has been asked for no order, and neither has the
 processor. On AArch64 the relaxed fragments are the plain `str` and `ldr`, the same instructions as
 the volatile version, and a stale read is allowed by the architecture; the harness on an AArch64
-device shows it. In this browser, run it and you will see none, because the WebAssembly the kernel
-runs has only sequentially consistent atomics, so the relaxed version got the strong store and the
-strong load for free. That is the browser hiding a bug, not the bug's absence, and
+device can show it. In this browser, run it and you will see none, because the WebAssembly the
+kernel runs has only sequentially consistent atomics, so the relaxed version got the strong store
+and the strong load for free. That is the browser hiding a bug, not the bug's absence, and
 [ch09](#relaxed-atomics) is about what relaxed does and does not promise.
 
 ## The mental model
@@ -223,7 +249,7 @@ load; nothing at all on x86-64; the one strong store WebAssembly has.
 
 **How often a stale read happens natively.** On x86-64 with these fragments, never: the compiler
 kept the stores in order and the architecture keeps them in order. For volatile and relaxed another
-compile may not, as the WebAssembly fragment shows. On AArch64, often, for volatile and relaxed.
+compile may not, as the WebAssembly fragment shows. On AArch64, sometimes, for volatile and relaxed, and a run can show none; [Appendix A](#reproducing-at-a-desk)'s desk report is where to look on an AArch64 machine.
 The browser's count is for the WebAssembly build, whose stores the compiler reordered; it is a real
 stale read with a different cause.
 

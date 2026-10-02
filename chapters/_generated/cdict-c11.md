@@ -4,7 +4,7 @@
 
 | You will read | What it is | Where the book teaches it |
 |---|---|---|
-| `_Atomic` | A type qualifier: every access to the variable is one indivisible step, and the compiler may not fold, hoist or reorder those accesses as it does plain ones. | ch03 for what that buys and what it does not; ch07 for the compiler's side. |
+| `_Atomic` | A type qualifier: every access to the variable is one indivisible step that another thread may observe, which the language promises for no plain access. | ch03 for what that buys and what it does not; ch07 for the compiler's side. |
 | `atomic_load_explicit` | Reads an atomic variable with the ordering named by its last argument, from `<stdatomic.h>`. | ch08 and ch09 for acquire and relaxed loads. |
 | `atomic_store_explicit` | Writes an atomic variable with the ordering named by its last argument. | ch08 and ch10 for release and sequentially consistent stores. |
 | `atomic_fetch_add_explicit` | Adds to an atomic variable as one indivisible read-modify-write and returns the old value. | ch03. |

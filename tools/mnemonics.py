@@ -54,7 +54,7 @@ X86_64 = {
     "add": (
         "arith",
         "Adds the source to the destination and keeps the result in the destination.",
-        "Register arithmetic between a load and a store: the middle of the three steps.",
+        "With a register destination, the middle of the three steps; with a memory destination, a read and a separate write on memory, like inc, atomic only with a lock prefix.",
     ),
     "and": ("arith", "Bitwise and of the two operands, into the first.", None),
     "cmp": (
@@ -64,7 +64,7 @@ X86_64 = {
     ),
     "cmpxchg": (
         "rmw",
-        "Compare-and-exchange: if the accumulator equals the operand, stores the register into the operand; otherwise loads the operand into the accumulator. Atomic with a lock prefix.",
+        "Compare-and-exchange: if eax, the accumulator, equals the operand, stores the register into the operand; otherwise loads the operand into eax. Atomic with a lock prefix.",
         "The compare-and-swap of ch04, and the foundation of every lock-free structure in Part V.",
     ),
     "dec": (
@@ -93,7 +93,7 @@ X86_64 = {
     "jne": (
         "branch",
         "Jumps if the last compare found the operands unequal.",
-        "The back edge of a retry loop: the compare failed, so go round again.",
+        "The branch back to the top of a retry loop: the compare failed, so go round again.",
     ),
     "jns": ("branch", "Jumps if the last result was not negative.", None),
     "lea": ("address", "Computes an address and puts it in a register, without loading from it.", None),
@@ -174,7 +174,7 @@ AARCH64 = {
     "b.ne": (
         "branch",
         "Branches if the last compare found the operands unequal.",
-        "The back edge of a retry loop: the compare failed, so go round again.",
+        "The branch back to the top of a retry loop: the compare failed, so go round again.",
     ),
     "b.pl": ("branch", "Branches if the last result was not negative.", None),
     "cas": (
@@ -190,7 +190,7 @@ AARCH64 = {
     "cbnz": (
         "branch",
         "Branches if the register is not zero.",
-        "The back edge of an exclusive retry loop: the store-exclusive failed, so load again.",
+        "The branch back to the top of an exclusive retry loop: the store-exclusive failed, so load again.",
     ),
     "cbz": ("branch", "Branches if the register is zero.", None),
     "ccmp": (
@@ -263,7 +263,7 @@ AARCH64 = {
     "stxr": (
         "exclusive",
         "A store-exclusive: stores only if the address is still marked by the matching load-exclusive, and reports failure as one in a register.",
-        "The store half of the pair; a failure means another core wrote the word, and the loop goes round.",
+        "The store half of the pair; a failure means the word may have been written, or the reservation was lost for another reason, so the loop goes round.",
     ),
     "sub": ("arith", "Subtracts the last operand from the middle one into the first.", None),
     "subs": ("arith", "Subtracts and sets the flags.", None),
@@ -325,12 +325,12 @@ RISCV64 = {
     "bne": (
         "branch",
         "Branches if the two registers differ.",
-        "The back edge of a retry loop: the compare failed, so go round again.",
+        "The branch back to the top of a retry loop: the compare failed, so go round again.",
     ),
     "bnez": (
         "branch",
         "Branches if the register is not zero.",
-        "The back edge of a reserved retry loop: the store-conditional failed, so load again.",
+        "The branch back to the top of a reserved retry loop: the store-conditional failed, so load again.",
     ),
     "fence": (
         "fence",
@@ -366,12 +366,12 @@ RISCV64 = {
     "sc.d": (
         "exclusive",
         "Store-conditional of a 64-bit word: stores only if the reservation still holds, and writes zero on success to a register.",
-        "The store half of a reserved pair; a failure means another core wrote the word, and the loop goes round.",
+        "The store half of a reserved pair; a failure means the word may have been written, or the reservation was lost for another reason, so the loop goes round.",
     ),
     "sc.w": (
         "exclusive",
         "Store-conditional: stores only if the reservation from the load-reserved still holds, and writes zero on success or non-zero on failure to a register.",
-        "The store half of the pair; a failure means another core wrote the word, and the loop goes round.",
+        "The store half of the pair; a failure means the word may have been written, or the reservation was lost for another reason, so the loop goes round.",
     ),
     "sc.w.rl": (
         "exclusive",
@@ -407,17 +407,21 @@ WASM = {
     "br_if": (
         "branch",
         "Branches if the value on top of the stack is not zero.",
-        "The back edge of a retry loop or a spin.",
+        "The branch back to the top of a retry loop or a spin.",
     ),
     "br_table": (
         "branch",
         "Branches to one of several depths, chosen by the value on top of the stack.",
         None,
     ),
-    "call": ("branch", "Calls a function.", None),
+    "call": (
+        "branch",
+        "Calls a function.",
+        "A call: what the called function does to shared memory is in that function's own listing.",
+    ),
     "drop": ("move", "Discards the value on top of the stack.", None),
-    "end_block": ("branch", "Closes a block.", None),
-    "end_loop": ("branch", "Closes a loop.", None),
+    "end_block": ("branch", "Closes a block; the specification's text format spells it end.", None),
+    "end_loop": ("branch", "Closes a loop; the specification's text format spells it end.", None),
     "global.get": ("move", "Pushes a global variable's value.", None),
     "i32.add": (
         "arith",

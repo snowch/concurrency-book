@@ -60,9 +60,7 @@ Try these, in order:
    run is now shorter than the wake-ups and the messages around it. That is why the book's
    experiments default to counts in the hundreds of thousands, and why
    [ch21](#contention-and-scalability) said to read ratios rather than numbers.
-4. **Switch to the deterministic trace and then to the desk commands.** The three modes are three
-   views of the same kernel: compiled to WebAssembly on workers, modelled, and compiled for
-   pthreads.
+4. **Switch to the deterministic trace and then to the desk commands.** The three modes are the kernel compiled to WebAssembly on workers, a model written by hand to mirror it, and the kernel compiled for pthreads: two views of the same code and one of a model.
 
 :::{dropdown} What pthreads are
 :class: library
@@ -78,8 +76,7 @@ Three things the kernel's source does not show.
 
 **The compile.** clang compiles the kernel for the `wasm32` target with the atomics and
 bulk-memory features, links it with a shared, imported memory and no entry point, and exports the
-stack pointer. The last flag is the one that makes threads work at all, and the next paragraph
-says why. The build script in the repository, `tools/lower.py`, holds the exact flags, and
+stack pointer. The shared memory is what makes threads possible at all; the last flag is what makes them safe, and the next paragraph says why. The build script in the repository, `tools/lower.py`, holds the exact flags, and
 [Appendix A](#reproducing-at-a-desk) prints them.
 
 **The stack.** A WebAssembly module keeps the part of its C stack that needs an address, arrays and
