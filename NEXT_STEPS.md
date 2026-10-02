@@ -17,17 +17,30 @@ The working list. PLAN.md says why; this says what is next.
   or deterministic experiment and the fragments its claims rest on.
 - Validation in headless Chromium: live with server headers, live through the service worker,
   the trace fallback when the service worker is blocked, and the phone width.
+- Published on GitHub Pages from main, with the Quality workflow green on every push.
+- A ramp from basic C: the *Before you start* page, folded labelled notes where incidental
+  machinery first appears, a four-layer strip under every fragment with the layer the listing
+  is evidence for set in relief, and a legend appendix generated from the dictionary that also
+  gives every mnemonic its two hover lines.
+- A conceptual audit of every chapter by four independent readers, with the minimal edits that
+  keep the language, the compiler, the instruction set and the microarchitecture apart, and
+  every count from a run called one observation.
 
 ## Next
 
-1. Run the smoke test in Firefox and in WebKit where a machine with them is available. The
+1. A reader-led editorial pass: one systems expert asked to find every statement simplified
+   enough to mislead, and one strong programmer without memory-model background asked only to
+   say where they stopped understanding why something was true. The machines have checked
+   what they can; this is what they cannot.
+2. Run the experiments on an AArch64 device, a phone or an Apple laptop, through the browser and
+   the native harness, and record what the ordering chapters show there; the book's biggest
+   latent payoff, since x86-64 hides most of what Part III is about.
+3. Run the smoke test in Firefox and in WebKit where a machine with them is available. The
    capability check and the fallback are written for both and have been exercised only in
    Chromium.
-2. Read the book end to end on a phone, in both themes, for what the smoke test cannot see.
-3. Publish: turn on GitHub Pages for the repository with GitHub Actions as the source, so
-   `deploy.yml` serves `_build/html`.
-4. Run the native harness on an AArch64 machine and add what it observes to the experiments
-   appendix, which so far reports observations from an x86-64 machine only.
+4. An "open the hood" appendix: how to print the machine code a browser's engine made from the
+   same WebAssembly (V8 prints it when started with a flag), so the book's "representative"
+   native fragments can be set beside what one engine did on one day.
 
 ## Open questions
 
