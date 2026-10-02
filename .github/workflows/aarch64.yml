@@ -58,7 +58,8 @@ jobs:
       - name: The ordering kernels at a desk, on this runner
         env:
           CLANG: clang-18
-        run: ./scripts/desk-report.sh | tee desk-report.md >> "$GITHUB_STEP_SUMMARY"
+        # The table goes to the log, the summary and the artifact alike.
+        run: ./scripts/desk-report.sh | tee desk-report.md | tee -a "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/upload-artifact@v4
         with:
