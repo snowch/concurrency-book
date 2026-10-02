@@ -148,8 +148,8 @@ returns to *same word*'s, and the next chapter is about why.
 copy; writing needs the only copy. Every write to a line another cache holds invalidates that
 copy first.
 
-**Coherence is kept by a protocol, and the protocol is traffic.** A shared word that several cores write
-bounces between their caches, and the bounce costs a round trip across the chip per write.
+**Coherence is kept by a protocol, and the protocol is traffic.** A shared word that several cores
+write bounces between their caches, and the bounce costs a round trip across the chip per write.
 
 **Nothing in the instruction set shows it.** Same instruction, same count, different address,
 different time. Timing is the only instrument.
@@ -161,7 +161,8 @@ different time. Timing is the only instrument.
 directories, and a browser does not say which processor it runs on. The panel measures the
 effect, not the mechanism.
 
-**The line size.** Sixty-four bytes on most cores, a hundred and twenty-eight on some, including Apple's AArch64 cores. The *two lines apart* layout exists for them.
+**The line size.** Sixty-four bytes on most cores, a hundred and twenty-eight on some, including
+Apple's AArch64 cores. The *two lines apart* layout exists for them.
 
 **The time of one bounce.** The live time is a whole run under the browser's scheduling. The
 ratio between layouts is the result; the absolute time is not.

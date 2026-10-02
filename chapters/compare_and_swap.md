@@ -130,24 +130,35 @@ is the next chapter's subject.
 :::
 ::::
 
-**x86-64** has `cmpxchg`, with the `lock` prefix from ch03. The expected value goes in `eax`, which the instruction defines, not the compiler; the instruction compares it with the word, stores the new value from the other
-register on a match, and on a mismatch loads the word's current value into `eax`, which is why
-the C's `seen` is up to date after a failure without another load. The compiler emitted the
-first attempt and the retry loop as two copies of the same instruction, one for the common case
-of no contest.
+**x86-64** has `cmpxchg`, with the `lock` prefix from ch03. The expected value goes in `eax`, which
+the instruction defines, not the compiler; the instruction compares it with the word, stores the
+new value from the other register on a match, and on a mismatch loads the word's current value into
+`eax`, which is why the C's `seen` is up to date after a failure without another load. The compiler
+emitted the first attempt and the retry loop as two copies of the same instruction, one for the
+common case of no contest.
 
-**AArch64** has no single compare-and-swap in its base instruction set, so the compiler builds
-one from the exclusive pair you met in ch03: `ldxr` loads and watches the word, `cmp` and `b.ne`
-leave if it is not what was expected, `stxr` stores only if nothing wrote the word since the load. `clrex` on the failure path drops the watch. The loop labelled `.LBB1_6` is the retry. With
-**LSE** the whole thing is one instruction, `cas`, which compares and swaps in memory as x86-64's
-does; the fragment is in the LSE tab.
+**AArch64** has no single compare-and-swap in its base instruction set, so the compiler builds one
+from the exclusive pair you met in ch03: `ldxr` loads and watches the word, `cmp` and `b.ne` leave
+if it is not what was expected, `stxr` stores only if nothing wrote the word since the load.
+`clrex` on the failure path drops the watch. The loop labelled `.LBB1_6` is the retry. With **LSE**
+the whole thing is one instruction, `cas`, which compares and swaps in memory as x86-64's does; the
+fragment is in the LSE tab.
+
+:::{dropdown} What a label like `.LBB1_6` is
+:class: compiler
+A name the compiler invented for a place in the code, so that a branch can say where to go; the
+leading `L` marks it as local to the file, and the numbers mean nothing. The fragments keep
+these labels because the loops jump to them. WebAssembly has no labels: a branch there names
+how many blocks to leave.
+:::
 
 **RISC-V** builds it from `lr.w` and `sc.w`, load-reserved and store-conditional: the same idea
 as AArch64's exclusives, with `bne` leaving on a mismatch and `bnez` retrying when the store
 conditional failed.
 
-**WebAssembly** has `i32.atomic.rmw.cmpxchg`: compare and exchange, one instruction, which
-returns the value the word held. The browser's engine lowers it to a compare-and-swap of the host's own, which may or may not be one of the above.
+**WebAssembly** has `i32.atomic.rmw.cmpxchg`: compare and exchange, one instruction, which returns
+the value the word held. The browser's engine lowers it to a compare-and-swap of the host's own,
+which may or may not be one of the above.
 
 Two kinds of failure appear in these fragments, and the C hides the distinction. A compare-and-swap
 can fail because the value differed, which is the contest the loop expects. On AArch64 and RISC-V
@@ -245,8 +256,10 @@ scheduling. It shows that contests are frequent and uneven; it does not give a r
 **What the lock's orderings do.** The acquire and release are correct and necessary, and this
 chapter has not said why. Part III does.
 
-**Whether a retry was a contest or a spurious failure.** In the browser a retry is always a contest: `i32.atomic.rmw.cmpxchg` cannot fail spuriously, and any spurious failure on the host is retried inside the engine, out of the kernel's sight. Only the native build on AArch64 or RISC-V counts a spurious failure as a retry. The native fragments show
-where each kind can arise.
+**Whether a retry was a contest or a spurious failure.** In the browser a retry is always a
+contest: `i32.atomic.rmw.cmpxchg` cannot fail spuriously, and any spurious failure on the host is
+retried inside the engine, out of the kernel's sight. Only the native build on AArch64 or RISC-V
+counts a spurious failure as a retry. The native fragments show where each kind can arise.
 
 ## Where to go next
 

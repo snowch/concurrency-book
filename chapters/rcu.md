@@ -195,9 +195,10 @@ is false, and the writer frees what the reader holds.
 
 ## What this cannot tell you
 
-**How a kernel implements it.** The Linux kernel's RCU has readers that, in its non-preemptible form, cost nothing on the read path, with quiescent states inferred from context switches and timer ticks, and grace
-periods tracked by a tree of counters across hundreds of cores. The kernel here is the idea;
-the implementation is a field of its own.
+**How a kernel implements it.** The Linux kernel's RCU has readers that, in its non-preemptible
+form, cost nothing on the read path, with quiescent states inferred from context switches and timer
+ticks, and grace periods tracked by a tree of counters across hundreds of cores. The kernel here is
+the idea; the implementation is a field of its own.
 
 **What a reader may do with a record.** Read it. A reader that modifies a record, or holds a
 pointer past its read, is outside the protocol. Writers that must coordinate with each other

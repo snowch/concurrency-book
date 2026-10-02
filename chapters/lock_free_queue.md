@@ -202,7 +202,9 @@ consumer through the slot, and that handover needs its own flag: the sequence nu
 **A claim is not a write.** Owning position `t` is not the same as having written slot `t`. The
 slot must say when it is ready, with a release, and be read with an acquire.
 
-**A claim is a small lock.** A producer that stops between its claim and its release store holds position `t`, and the consumer of `t` waits for it. This ring has no lock, which is the title's sense, but it is not lock-free in ch16's sense.
+**A claim is a small lock.** A producer that stops between its claim and its release store holds
+position `t`, and the consumer of `t` waits for it. This ring has no lock, which is the title's
+sense, but it is not lock-free in ch16's sense.
 
 **One of each needs none of this.** A single producer and a single consumer need only the
 release and acquire on the two indices.

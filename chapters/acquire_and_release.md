@@ -136,13 +136,13 @@ The writer's four versions, in one fragment per target. Find the release:
 ::::
 
 **AArch64** shows the release as an instruction: `stlr`, store-release, where the volatile and
-relaxed versions use a plain `str`. **RISC-V** shows it as a `fence rw, w` before the store:
-every earlier read and write is ordered before this write, as every other hart sees it. **x86-64** shows nothing: the release
-store is the same `mov` as the relaxed one, because x86-64 never reorders a store with an earlier
-store, so the ordering the C asked for is free. **WebAssembly** shows the volatile version with
-the flag's store first, as the compiler scheduled it, and every atomic version as the same
-`i32.atomic.store`, because every WebAssembly atomic is sequentially consistent and there is no
-weaker atomic store to emit.
+relaxed versions use a plain `str`. **RISC-V** shows it as a `fence rw, w` before the store: every
+earlier read and write is ordered before this write, as every other hart sees it. **x86-64** shows
+nothing: the release store is the same `mov` as the relaxed one, because x86-64 never reorders a
+store with an earlier store, so the ordering the C asked for is free. **WebAssembly** shows the
+volatile version with the flag's store first, as the compiler scheduled it, and every atomic
+version as the same `i32.atomic.store`, because every WebAssembly atomic is sequentially consistent
+and there is no weaker atomic store to emit.
 
 The reader's four versions:
 
@@ -221,9 +221,11 @@ load; nothing at all on x86-64; the one strong store WebAssembly has.
 
 ## What this cannot tell you
 
-**How often a stale read happens natively.** On x86-64 with these fragments, never: the compiler kept the stores in order and the architecture keeps them in order. For volatile and relaxed another compile may not, as the WebAssembly fragment shows. On AArch64, often, for volatile and
-relaxed. The browser's count is for the WebAssembly build, whose stores the compiler reordered;
-it is a real stale read with a different cause.
+**How often a stale read happens natively.** On x86-64 with these fragments, never: the compiler
+kept the stores in order and the architecture keeps them in order. For volatile and relaxed another
+compile may not, as the WebAssembly fragment shows. On AArch64, often, for volatile and relaxed.
+The browser's count is for the WebAssembly build, whose stores the compiler reordered; it is a real
+stale read with a different cause.
 
 **What the reader's reordering looks like.** The trace reorders only the writer's stores. A
 weakly ordered processor may also perform the reader's second load before its first, with the

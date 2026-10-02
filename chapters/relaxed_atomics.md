@@ -124,9 +124,10 @@ the instruction set has one atomic load and it is the strong one.
 The writer's side is in [ch08](#acquire-and-release)'s fragments: a relaxed store is a plain
 `str` on AArch64, a plain `sw` on RISC-V, a plain `mov` on x86-64.
 
-So a relaxed load or store costs what a plain one costs, on every target where an aligned word is already atomic, which is all of them. A relaxed read-modify-write still pays for its atomicity, as ch03's lock prefix showed. What you buy with it is the compiler's
-honesty and the one order per variable; what the processor adds is nothing, on these instructions;
-the page does not time them.
+So a relaxed load or store costs what a plain one costs, on every target where an aligned word is
+already atomic, which is all of them. A relaxed read-modify-write still pays for its atomicity, as
+ch03's lock prefix showed. What you buy with it is the compiler's honesty and the one order per
+variable; what the processor adds is nothing, on these instructions; the page does not time them.
 
 ## Fix one thing
 

@@ -200,9 +200,9 @@ step atomic, the pair not.
 :::{div}
 :class: model
 
-**The simplest lock-free structure changes by one compare-and-swap per mutation.** The expected value encodes
-what the mutation assumed. If the assumption no longer holds, the swap fails and the thread
-reads again.
+**The simplest lock-free structure changes by one compare-and-swap per mutation.** The expected
+value encodes what the mutation assumed. If the assumption no longer holds, the swap fails and the
+thread reads again.
 
 **Nobody holds anything.** A thread that stops between its reads and its swap blocks nobody; its
 swap fails when it resumes.

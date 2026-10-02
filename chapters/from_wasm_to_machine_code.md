@@ -158,13 +158,15 @@ it were not there.
 :::{div}
 :class: model
 
-**WebAssembly is compiled, not executed by a processor.** The browser's engine translates it to machine code for
-the host, with choices of its own.
+**WebAssembly is compiled, not executed by a processor.** The browser's engine translates it to
+machine code for the host, with choices of its own.
 
 **Meaning crosses the boundary; form does not.** An atomic add is an atomic add on every host.
 Which instruction, and with what around it, is the engine's.
 
-**WebAssembly is its own memory model.** Atomics are sequentially consistent, and plain accesses promise no order, so what you see is whatever the engine and then the host allow. Some of C's distinctions are gone before the engine sees them.
+**WebAssembly is its own memory model.** Atomics are sequentially consistent, and plain accesses
+promise no order, so what you see is whatever the engine and then the host allow. Some of C's
+distinctions are gone before the engine sees them.
 
 **Native fragments show a mechanism, not the browser's code.** They are one compiler's lowering,
 labelled, and the book claims nothing more for them.
@@ -176,8 +178,9 @@ labelled, and the book claims nothing more for them.
 versions. The book's fragments are for understanding the mechanism; your engine's dump is for
 debugging your engine.
 
-**Which engine you have.** Chromium, Firefox and Safari compile WebAssembly differently, and
-tier their compilation differently. A kernel that is correct is correct on all three, because the meaning is; what a race loses, and the times, are each run's own.
+**Which engine you have.** Chromium, Firefox and Safari compile WebAssembly differently, and tier
+their compilation differently. A kernel that is correct is correct on all three, because the
+meaning is; what a race loses, and the times, are each run's own.
 
 **Whether a plain WebAssembly access can be torn.** Aligned accesses of the natural size are
 atomic in practice on every host; the specification's wording is weaker. The book's plain

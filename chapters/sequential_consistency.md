@@ -124,8 +124,11 @@ The four versions of thread A's half:
 
 **x86-64** is the one to read first. The volatile, relaxed and release-acquire versions are the
 same two instructions: `mov` to store, `mov` to load. The sequentially consistent version stores
-with `xchg`, an atomic exchange, whose implicit lock the architecture defines as a full barrier: the store is visible before anything after it runs. On the cores the book knows, that means draining the store buffer. One instruction changed, and the
-outcome disappears. The compiler could have emitted a `mov` followed by `mfence`; on current cores `xchg` is cheaper, and for ordinary stores and loads it orders the same.
+with `xchg`, an atomic exchange, whose implicit lock the architecture defines as a full barrier:
+the store is visible before anything after it runs. On the cores the book knows, that means
+draining the store buffer. One instruction changed, and the outcome disappears. The compiler could
+have emitted a `mov` followed by `mfence`; on current cores `xchg` is cheaper, and for ordinary
+stores and loads it orders the same.
 
 **AArch64** charges `stlr` and `ldar` for release-acquire and the same two for sequentially
 consistent: on AArch64 a store-release followed by a load-acquire is already ordered, which is a

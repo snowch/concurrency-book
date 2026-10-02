@@ -37,6 +37,14 @@ orderings, and for a counter this one is enough:
 :end-before: /* Two atomic operations
 ```
 
+:::{dropdown} The shape of an atomic operation's name
+:class: library
+`atomic_fetch_add_explicit` comes from C's `<stdatomic.h>`: *fetch_add* says what it does, add
+and return the old value, and *explicit* says an ordering argument follows. The orderings,
+`memory_order_relaxed` here, are [Part III](#part-memory-ordering)'s subject. Until then, read
+every `memory_order_relaxed` in a kernel as "atomic, and nothing more".
+:::
+
 ## Run it
 
 Four workers this time, so the cost shows as well as the correctness.
@@ -114,11 +122,13 @@ that notices. That is the limit the rest of the chapter is about.
 :::
 ::::
 
-**x86-64** adds one byte to the instruction from [ch01](#what-x-plus-plus-does): the `lock`
-prefix. The `inc` is the same read, add, write; the prefix makes the read and the write one atomic access: the instruction set promises that no other core's access to the word lands between them. How a core keeps that promise, on most modern parts by holding the cache line for the instruction, is the microarchitecture's business. On
-x86-64 the prefix also orders every earlier and later memory access of this thread around it,
-which [ch15](#x86-is-not-the-model) returns to; the C asked for *relaxed* and got more than it
-asked for.
+**x86-64** adds one byte to the instruction from [ch01](#what-x-plus-plus-does): the `lock` prefix.
+The `inc` is the same read, add, write; the prefix makes the read and the write one atomic access:
+the instruction set promises that no other core's access to the word lands between them. How a core
+keeps that promise, on most modern parts by holding the cache line for the instruction, is the
+microarchitecture's business. On x86-64 the prefix also orders every earlier and later memory
+access of this thread around it, which [ch15](#x86-is-not-the-model) returns to; the C asked for
+*relaxed* and got more than it asked for.
 
 **AArch64**, without extensions, has no single instruction that adds to memory. It uses a pair:
 `ldxr` loads the word and marks the address as being watched, `add` adds one in the register, and
@@ -138,9 +148,9 @@ as one instruction. The destination register is `zero`, so the old value is disc
 discarded it.
 
 **WebAssembly** has `i32.atomic.rmw.add`: read-modify-write add, one instruction, whose result is
-dropped. The engine in your browser lowers it to an atomic add of the host's own, which may or may not be one of the above. The
-WebAssembly instruction promises atomicity; it does not say which host instruction delivers it,
-and the book never claims to know.
+dropped. The engine in your browser lowers it to an atomic add of the host's own, which may or may
+not be one of the above. The WebAssembly instruction promises atomicity; it does not say which host
+instruction delivers it, and the book never claims to know.
 
 ## Fix one thing
 
@@ -226,7 +236,11 @@ value only if it is still what you last saw, is [ch04](#compare-and-swap).
 :::{div}
 :class: model
 
-**An atomic read-modify-write is one step with no window.** The instruction set promises that no other core's write lands between the read and the write that counts, in one instruction (x86-64's `lock inc`, RISC-V's `amoadd`, AArch64's `ldadd`) or in a marked load and a store that fails and retries (AArch64's `ldxr` and `stxr`). Either way, other cores see the operation whole or not at all.
+**An atomic read-modify-write is one step with no window.** The instruction set promises that no
+other core's write lands between the read and the write that counts, in one instruction (x86-64's
+`lock inc`, RISC-V's `amoadd`, AArch64's `ldadd`) or in a marked load and a store that fails and
+retries (AArch64's `ldxr` and `stxr`). Either way, other cores see the operation whole or not at
+all.
 
 **Atomicity belongs to an operation, not a variable.** Declaring a variable atomic makes each
 access indivisible. Two accesses have a window between them like any other two.

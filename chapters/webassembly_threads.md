@@ -45,6 +45,15 @@ Saying a word stores it and wakes whoever sleeps on it:
 :end-before: #elif defined(CM_NATIVE_FUTEX)
 ```
 
+:::{dropdown} Conditional compilation and the builtins
+:class: compiler
+`#ifdef __wasm__` compiles the lines up to `#elif` only when the target is WebAssembly; the name
+is one clang defines for that target. `__builtin_wasm_memory_atomic_wait32` and its notify twin
+are not functions in any library but names clang understands and turns straight into the two
+instructions. A native build takes the next branch of the header, the futex of
+[ch06](#from-spinlock-to-mutex), instead.
+:::
+
 ## Run it
 
 ```lab
@@ -189,8 +198,9 @@ which the book's service worker makes every page into.
 
 ## What this cannot tell you
 
-**How the engine implements a wait.** It may park the thread in the operating system, spin
-briefly first, or both. WebAssembly's promise is only that a waiting thread takes no steps until it is woken or times out.
+**How the engine implements a wait.** It may park the thread in the operating system, spin briefly
+first, or both. WebAssembly's promise is only that a waiting thread takes no steps until it is
+woken or times out.
 
 **The wake-up cost on your operating system.** The per-round-trip time is two wake-ups on this
 device, this run, through this browser. The native harness measures the futex directly.

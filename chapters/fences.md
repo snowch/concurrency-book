@@ -102,9 +102,11 @@ would lose exactly the same updates.
 :::
 ::::
 
-**x86-64**: `mfence`, memory fence: every load and store before it is performed before any after it. On the cores the book knows, that means the store buffer drains before the next load. It is the one explicit full fence x86-64 has, and it is slower than a locked
-instruction doing the same job, which is why ch10's compiler chose `xchg` for the sequentially
-consistent store and why some runtimes use a locked add to a stack slot as a fence.
+**x86-64**: `mfence`, memory fence: every load and store before it is performed before any after
+it. On the cores the book knows, that means the store buffer drains before the next load. It is the
+one explicit full fence x86-64 has, and it is slower than a locked instruction doing the same job,
+which is why ch10's compiler chose `xchg` for the sequentially consistent store and why some
+runtimes use a locked add to a stack slot as a fence.
 
 **AArch64**: `dmb ish`, data memory barrier, inner shareable domain. Every memory access before
 it completes before any after it, as observed by every core in the inner shareable domain, which

@@ -64,6 +64,14 @@ Try these, in order:
    views of the same kernel: compiled to WebAssembly on workers, modelled, and compiled for
    pthreads.
 
+:::{dropdown} What pthreads are
+:class: library
+POSIX threads: the C library's interface for creating threads and waiting for them, which the
+native harness uses to run a kernel's `cm_run` on real operating-system threads. The kernel never
+calls it; the harness does, which is why the same C runs on Web Workers and on pthreads
+unchanged. [Appendix A](#reproducing-at-a-desk) has the commands.
+:::
+
 ## What the source hides
 
 Three things the kernel's source does not show.
@@ -74,9 +82,12 @@ stack pointer. The last flag is the one that makes threads work at all, and the 
 says why. The build script in the repository, `tools/lower.py`, holds the exact flags, and
 [Appendix A](#reproducing-at-a-desk) prints them.
 
-**The stack.** A WebAssembly module keeps the part of its C stack that needs an address, arrays and locals whose address is taken, in linear memory, with a global that points at the top. Every instance of the module starts with the same value in that global. Two
-workers instantiating the same module on the same memory would therefore share one stack and
-corrupt each other's locals, which is a bug that shows up as nothing in particular. The linker exports the global and each worker sets it to a region of its own before calling anything:
+**The stack.** A WebAssembly module keeps the part of its C stack that needs an address, arrays and
+locals whose address is taken, in linear memory, with a global that points at the top. Every
+instance of the module starts with the same value in that global. Two workers instantiating the
+same module on the same memory would therefore share one stack and corrupt each other's locals,
+which is a bug that shows up as nothing in particular. The linker exports the global and each
+worker sets it to a region of its own before calling anything:
 
 ```{literalinclude} ../web/lab/worker.js
 :language: javascript
@@ -84,9 +95,20 @@ corrupt each other's locals, which is a bug that shows up as nothing in particul
 :end-before: };
 ```
 
+:::{dropdown} What `__stack_pointer` and `__heap_base` are
+:class: compiler
+Two names the linker, `wasm-ld`, gives the module: a global holding the top of the C stack, and
+the address where the kernel's data ends and free memory begins. The build asks the linker to
+export both, so the runtime can place a stack per worker above the data. They are the
+toolchain's conventions, not part of C or of WebAssembly itself.
+:::
+
 **The barrier.** Workers are created one after another and take different times to start; a run
 that began when each worker was ready would have the first worker finishing before the last had
-begun. So every kernel waits at the barrier in `cm_run`, each worker tells the page as it is about to call into the kernel, where its first act is to sleep at the barrier, and the page opens the barrier once all have reported; a worker that arrives late finds the flag set and goes straight through:
+begun. So every kernel waits at the barrier in `cm_run`, each worker tells the page as it is about
+to call into the kernel, where its first act is to sleep at the barrier, and the page opens the
+barrier once all have reported; a worker that arrives late finds the flag set and goes straight
+through:
 
 ```{literalinclude} ../web/lab/runtime.js
 :language: javascript

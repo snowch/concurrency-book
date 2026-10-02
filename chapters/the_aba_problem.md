@@ -165,8 +165,9 @@ that the fix with a proof is the next chapter's.
 :::{div}
 :class: model
 
-**Compare-and-swap compares a value, not a history.** A word that changed and changed back
-compares equal. For a counter that is harmless; for a pointer it means the same address with something different behind it: the same node re-linked, or another object there.
+**Compare-and-swap compares a value, not a history.** A word that changed and changed back compares
+equal. For a counter that is harmless; for a pointer it means the same address with something
+different behind it: the same node re-linked, or another object there.
 
 **ABA needs reuse.** A node popped and pushed again, or memory freed and reallocated, while a
 thread is between its reads and its swap.

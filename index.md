@@ -7,10 +7,10 @@ title: Preface
 
 ## What this book is
 
-This book is for engineers who want to know what is underneath the concurrency primitives they
-use, or are about to use. It starts from basic C and ends at atomics, memory ordering, cache
-coherence and machine instructions, and you learn concurrency by running it. Each chapter asks one question about threads, memory or the
-processor and answers it in four steps:
+This book is for engineers who want to know what is underneath the concurrency primitives they use,
+or are about to use. It starts from basic C and ends at atomics, memory ordering, cache coherence
+and machine instructions, and you learn concurrency by running it. Each chapter asks one question
+about threads, memory or the processor and answers it in four steps:
 
 1. **A tiny program.** A C function small enough to read in one glance, quoted from the
    repository that builds this book, never pasted.

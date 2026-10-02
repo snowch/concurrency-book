@@ -46,6 +46,15 @@ runs; with the operation set to *plain* it calls `increment` once per iteration:
 :end-before: CM_EXPORT("cm_reset")
 ```
 
+:::{dropdown} What CM_NOINLINE and CM_EXPORT are
+:class: compiler
+Both are macros from the book's own header, `experiments/cm.h`. `CM_NOINLINE` expands to a
+compiler attribute that stops clang copying the function's body into its caller, so the
+fragments below show the function on its own; `CM_EXPORT` names the four functions the page
+calls, `cm_run`, `cm_reset`, `cm_result` and `cm_go`, so the runtime can find them in the
+compiled module. Neither is part of C, and neither has anything to do with the increment.
+:::
+
 The barrier at the top holds every worker until the page says go. With one worker it changes
 nothing; it matters from [ch02](#two-threads-one-variable) on.
 
@@ -100,6 +109,15 @@ Each fragment below was written by the build, from the function above, with clan
 optimisation level two for the target named under it. Pick an architecture; the choice follows
 you through the book.
 
+:::{dropdown} What an optimisation level is
+:class: compiler
+`-O2` is a flag that tells clang how hard to work on the code. At `-O0` it translates each line
+as written; at `-O2` it may keep values in registers, fold loops and choose other instructions,
+within the rules the language sets. The book shows `-O2` because that is what ships, and `-O0`
+beside it where the difference teaches something. Which level produced a fragment is always in
+the line under it.
+:::
+
 ::::{tab-set}
 :::{tab-item} x86-64
 :sync: x86-64
@@ -131,10 +149,20 @@ variable's address. **RISC-V** is the same shape with its own names: `lw`, `addi
 address of the variable, pushed where the load and the store need it.
 
 **x86-64 is the one that lies to you.** The compiler chose `inc dword ptr [rip + counter]`: one
-instruction that increments a word in memory in place. The source became one instruction, so it
-is tempting to conclude that the increment is one step. It is not. Its architectural effect is still a read of the word and a write of the result: two memory accesses in one encoding. Without the `lock` prefix the instruction set does not make them one indivisible access, so another core's access may land between them. [ch03](#atomic-operations)
-shows the one-byte prefix that makes it so, and the trace in [ch02](#two-threads-one-variable)
-loses an update inside exactly this instruction.
+instruction that increments a word in memory in place. The source became one instruction, so it is
+tempting to conclude that the increment is one step. It is not. Its architectural effect is still a
+read of the word and a write of the result: two memory accesses in one encoding. Without the `lock`
+prefix the instruction set does not make them one indivisible access, so another core's access may
+land between them. [ch03](#atomic-operations) shows the one-byte prefix that makes it so, and the
+trace in [ch02](#two-threads-one-variable) loses an update inside exactly this instruction.
+
+:::{dropdown} Reading `inc dword ptr [rip + counter]`
+:class: isa
+`dword ptr` says the operand is a 32-bit word in memory. `[rip + counter]` is its address,
+written relative to the instruction pointer, which is how x86-64 code reaches a global variable
+wherever the code is loaded. AArch64's `adrp` with `:lo12:` and RISC-V's `auipc` form the same
+address in two steps. [Appendix D](#reading-the-fragments) has the notation of every target.
+:::
 
 What is guaranteed here, and what is not: the instruction set's meaning is guaranteed. `ldr`
 loads, `str` stores, and the processor performs them as the manual says. The compiler's choice
@@ -226,9 +254,10 @@ encoding changed.
 :class: model
 
 **An increment is a load, an add and a store.** The source shows one operation; the language
-defines three; and on every target the read and the write are two memory accesses, whatever the instruction count. On AArch64 and
-RISC-V the three are three instructions. On x86-64 the compiler usually folds them into one instruction whose read and write are still two accesses. The window between the load and the store is where
-every race in Part I happens.
+defines three; and on every target the read and the write are two memory accesses, whatever the
+instruction count. On AArch64 and RISC-V the three are three instructions. On x86-64 the compiler
+usually folds them into one instruction whose read and write are still two accesses. The window
+between the load and the store is where every race in Part I happens.
 
 **The compiler keeps the meaning for one thread and promises nothing to a second.** A loop of
 increments became one add. That is correct for the thread that runs it and fatal for any other

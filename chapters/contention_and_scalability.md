@@ -158,9 +158,13 @@ writers on the word, not a faster atomic.
 **The shape past the core count.** With more workers than cores, the scheduler decides, and the
 curve is its behaviour, not the hardware's. Read the charts up to the core count.
 
-**The rate in units you can trust.** Increments per millisecond on this device, this run, with the barrier's wake-up and the result messages inside the time. The ratios between the layouts and the shape of each curve are the result; the numbers are not a benchmark.
+**The rate in units you can trust.** Increments per millisecond on this device, this run, with the
+barrier's wake-up and the result messages inside the time. The ratios between the layouts and the
+shape of each curve are the result; the numbers are not a benchmark.
 
-**What else moved the number.** The engine may have compiled the kernel twice during the run, first quickly and then well; the cores may have changed frequency as they warmed; other tabs and processes shared them. None of that is in the kernel, and all of it is in the time.
+**What else moved the number.** The engine may have compiled the kernel twice during the run, first
+quickly and then well; the cores may have changed frequency as they warmed; other tabs and
+processes shared them. None of that is in the kernel, and all of it is in the time.
 
 **Reads.** The chapter counts writes. A word written by one thread and read by many has a
 different curve: the readers' caches keep shared copies of it, cheap until the writer writes.

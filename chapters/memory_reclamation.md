@@ -190,7 +190,9 @@ store-then-load must not both miss: the store-buffer test, with memory at stake.
 traversal of a list needs a hazard per node it holds, and the bookkeeping is the cost.
 
 **What garbage collection changes.** A language with a collector has no reuse problem: a node a
-reader holds is not freed. It has the ABA problem still if the program pushes the same node object back; a program that allocates a fresh node per push does not, because the collector never reuses an address a reader still holds.
+reader holds is not freed. It has the ABA problem still if the program pushes the same node object
+back; a program that allocates a fresh node per push does not, because the collector never reuses
+an address a reader still holds.
 
 **The whole design space.** Epochs, quiescent states, reference counts with deferred frees, and
 the schemes that combine them. [ch20](#rcu) is one; the sources below are the rest.

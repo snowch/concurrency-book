@@ -32,6 +32,15 @@ instead. The lock word now has three states, because a release must know whether
 :end-before: /* The counter the lock protects
 ```
 
+:::{dropdown} What a futex is
+:class: os
+A Linux system call, *fast userspace mutex*, with two halves: sleep this thread if a word in
+memory still holds a given value, and wake threads sleeping on a word. The browser's
+`memory.atomic.wait32` and `memory.atomic.notify` are the same two halves, which is why one
+kernel can do both. The call's flags and queues are the operating system's business and not the
+chapter's.
+:::
+
 Taking the lock:
 
 ```{literalinclude} ../experiments/mutex/mutex.c
@@ -177,7 +186,8 @@ wait that did not compare would have slept with nobody left to wake it.
 :class: model
 
 **A mutex is a spinlock whose waiters can stop running.** Taking it is ch04's compare-and-swap.
-Waiting is a request to the scheduler: if this word still holds this value, sleep until someone notifies on it.
+Waiting is a request to the scheduler: if this word still holds this value, sleep until someone
+notifies on it.
 
 **Sleeping needs the compare.** Wait sleeps only if the word still holds what the waiter expects,
 atomically against the wake; otherwise a release can land in the gap and the wake-up is lost.

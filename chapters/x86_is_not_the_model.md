@@ -200,7 +200,8 @@ AArch64's on AArch64, and nothing about either on the other.
 Dependencies, multi-copy atomicity, and the exact rules for mixed-size accesses are in the
 architecture manuals and the formal models cited below.
 
-**RISC-V's real hardware.** RVWMO is the specification; a given core may be stronger. The fragments show the mapping clang 18 chose, one of several the specification allows.
+**RISC-V's real hardware.** RVWMO is the specification; a given core may be stronger. The fragments
+show the mapping clang 18 chose, one of several the specification allows.
 
 ## Where to go next
 

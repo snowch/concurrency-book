@@ -37,6 +37,15 @@ together rather than one finishing before the other begins:
 :end-before: static inline void cm_barrier_reset
 ```
 
+:::{dropdown} What the barrier in cm.h is
+:class: library
+`cm_barrier_wait` and `cm_go` are the book's own, from `experiments/cm.h`: every worker sleeps on
+one word until the page stores one into it and wakes them all, so the loops start together.
+`static inline` lets the header define them in every kernel without a copy of the function per
+file. How the sleep and the wake work is [ch06](#from-spinlock-to-mutex)'s and
+[ch22](#webassembly-threads)'s subject; here they are only the starting gun.
+:::
+
 ## Run it
 
 Two workers, a million increments each, so the counter should end at two million. The two
@@ -67,6 +76,15 @@ chapter is why it is one and not a rule.
    schedule to *sequential*: nothing lost. Set it to *manual* and lose an update by hand: press
    *Step A*, then *Step B*, then alternate to the end. Every lost update you can make the model
    lose, the workers can lose too.
+
+:::{dropdown} What a cache line is, for now
+:class: hardware
+A core does not fetch one word from memory at a time but a block of neighbouring bytes, the
+line, and keeps a copy in its cache. When two cores write the same line, the copy has to move
+between them before each write, and that movement is the cost *Elapsed* shows.
+[ch12](#cache-coherence) measures it and says how the cores agree whose copy is current; until
+then, a line is the unit the cores fight over.
+:::
 
 ## What the source hides
 
