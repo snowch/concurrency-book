@@ -245,7 +245,8 @@ async function exerciseCounter(page, base, label) {
   lab = await settled(0);
   check(num(await lab.getAttribute("data-twice")) === 0 && num(await lab.getAttribute("data-lost")) === 0, `ch16 cas: ${await lab.getAttribute("data-popped")} popped, none twice, none lost`);
   lab = await settled(1);
-  check(await lab.getAttribute("data-operation") === "broken" && num(await lab.getAttribute("data-lost")) >= 0, `ch16 broken: ${await lab.getAttribute("data-twice")} popped twice, ${await lab.getAttribute("data-lost")} lost (whatever this device allows)`);
+  // The broken pop promises nothing: a corrupted stack can even make the accounting negative.
+  check(await lab.getAttribute("data-operation") === "broken" && num(await lab.getAttribute("data-twice")) >= 0, `ch16 broken: ${await lab.getAttribute("data-twice")} popped twice, ${await lab.getAttribute("data-lost")} lost (whatever this device allows)`);
   await lab.locator('.lab-modes button[data-mode="trace"]').click();
   await lab.locator(".stepper button", { hasText: "Run to the end" }).click();
   check((await lab.locator(".stepper").getAttribute("data-trace-outcome")).includes("two owners"), "ch16 trace: the broken pop gives one node two owners");

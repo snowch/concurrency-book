@@ -175,6 +175,10 @@ CM_EXPORT("cm_run") void cm_run(int tid, int a, int b, int c) {
         }
       }
       got++;
+      /* A broken design can leave head past tail, after which the ring never reads as empty and
+         a consumer would walk it until the index wrapped. More items than were ever produced is
+         proof enough that the design failed: stop there. */
+      if (got > a * c + SLOTS) break;
       if (v == 0) {
         empty++; /* a slot that was claimed before its producer wrote it */
         continue;

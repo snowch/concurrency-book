@@ -13,7 +13,10 @@ import path from "node:path";
 
 const STACK = 64 * 1024;
 
-async function runKernel(bytes, { workers, args }) {
+//: Runs that hit their timeout, which is a failure unless the check expected one.
+let timeouts = 0;
+
+async function runKernel(bytes, { workers, args, timeoutMs = 60000, expectTimeout = false }) {
   const module = await WebAssembly.compile(bytes);
   const memory = new WebAssembly.Memory({ initial: 64, maximum: 1024, shared: true });
   const main = await WebAssembly.instantiate(module, { env: { memory } });
@@ -33,16 +36,29 @@ async function runKernel(bytes, { workers, args }) {
   await Promise.all(pool.map((w) => new Promise((res) => w.on("message", (m) => m.type === "ready" && res()))));
   const t0 = performance.now();
   main.exports.cm_go();
-  await Promise.all(done);
+  // A kernel that never reports is a finding, not a reason for CI to wait: after the timeout
+  // the workers are terminated and the run says it timed out. The page's runtime does the same.
+  let timer;
+  const timedOut = await Promise.race([
+    Promise.all(done).then(() => false),
+    new Promise((res) => { timer = setTimeout(() => res(true), timeoutMs); }),
+  ]);
+  clearTimeout(timer);
+  if (timedOut && !expectTimeout) {
+    timeouts++;
+    console.log(`  FAIL a run of ${workers} workers with args ${JSON.stringify(args)} had not reported after ${timeoutMs} ms`);
+  }
   const elapsedMs = performance.now() - t0;
   const results = [];
-  for (let i = 0; i < 64; i++) {
-    const r = main.exports.cm_result(i);
-    if (r === -1) break;
-    results.push(r);
+  if (!timedOut) {
+    for (let i = 0; i < 64; i++) {
+      const r = main.exports.cm_result(i);
+      if (r === -1) break;
+      results.push(r);
+    }
   }
   await Promise.all(pool.map((w) => w.terminate()));
-  return { results, elapsedMs };
+  return { results, elapsedMs, timedOut };
 }
 
 if (!isMainThread) {
@@ -57,6 +73,7 @@ if (!isMainThread) {
   const bytes = (name) => readFileSync(path.join(site, "lab", `${name}.wasm`));
   let failures = 0;
   const check = (ok, what) => { console.log(`${ok ? "  ok  " : "  FAIL"} ${what}`); if (!ok) failures++; };
+  process.on("exit", () => { if (timeouts && !process.exitCode) process.exitCode = 1; });
 
   // counter: plain and atomic increments.
   {
@@ -112,11 +129,8 @@ if (!isMainThread) {
     check(vol.results[0] === 1 && vol.results[1] === 1, "compiler: the volatile loop ends on the flag");
     const atomic = await runKernel(compiler, { workers: 2, args: [100000, 2, 0] });
     check(atomic.results[0] === 1 && atomic.results[1] === 1, "compiler: the atomic loop ends on the flag");
-    const plain = await Promise.race([
-      runKernel(compiler, { workers: 2, args: [100000, 0, 0] }).then(() => "ended"),
-      new Promise((r) => setTimeout(() => r("hung"), 1500)),
-    ]);
-    check(plain === "hung", "compiler: the plain loop has not ended after 1.5 s: the compiler hoisted the load");
+    const plain = await runKernel(compiler, { workers: 2, args: [100000, 0, 0], timeoutMs: 1500, expectTimeout: true });
+    check(plain.timedOut, "compiler: the plain loop has not ended after 1.5 s: the compiler hoisted the load");
   }
 
   // publication: with a release and an acquire, or sequential consistency, the data always arrives
@@ -162,8 +176,12 @@ if (!isMainThread) {
     const [popped, remaining, twice, once] = cas.results;
     check(twice === 0 && once + remaining === 16000 && popped === once, `stack cas: ${popped} popped, ${remaining} left, none twice, none lost`);
     const broken = await runKernel(stack, { workers: 4, args: [4000, 1, 0] });
+    // A broken pop corrupts the links, so a walk of what is left may count nodes that were also
+    // popped: the accounting can come out negative, which is itself the corruption showing. The
+    // kernel promises nothing here beyond counts that are counts.
     const lost = 16000 - broken.results[3] - broken.results[2] - broken.results[1];
-    check(lost >= 0 && broken.results[2] >= 0, `stack broken: ${broken.results[2]} popped twice, ${lost} lost (whatever this host allows)`);
+    const account = lost >= 0 ? `${lost} lost` : `a walk of the stack counted ${-lost} more nodes than were pushed: corrupted links`;
+    check(broken.results.every((x) => x >= 0), `stack broken: ${broken.results[2]} popped twice, ${account} (whatever this host allows)`);
   }
 
   // aba: the tagged head never pops a node that was not in the stack and keeps its three nodes.

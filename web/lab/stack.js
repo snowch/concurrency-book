@@ -19,7 +19,7 @@ export async function mount(shell) {
         { name: "popped", label: "Popped", value: popped, hint: `${fmt(r.results[4])} pops found the stack empty` },
         { name: "remaining", label: "Still in the stack", value: remaining },
         { name: "twice", label: "Popped twice", value: twice, className: twice === 0 ? "good" : "bad", hint: twice === 0 ? "every node to one owner" : "one node, two owners" },
-        { name: "lost", label: "Lost", value: lost, className: lost === 0 ? "good" : "bad", hint: lost === 0 ? "every node accounted for" : "neither popped nor in the stack" },
+        { name: "lost", label: "Lost", value: lost, className: lost === 0 ? "good" : "bad", hint: lost === 0 ? "every node accounted for" : lost > 0 ? "neither popped nor in the stack" : "below zero: the stack's links are corrupted and a walk counted nodes twice" },
       ];
     },
     trace: {
