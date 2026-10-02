@@ -133,6 +133,8 @@ other cores and visible to this one. Why it matters here: it is the piece of the
 behind x86-64's one reordering, and the reason ch10's outcome is possible.
 [ch14](#store-buffers-and-visibility)
 
+**Teaching machine.** The deterministic model as the page draws it: a few registers, a program counter and a store buffer per thread, a shared memory, and a program written by hand to mirror a kernel, stepped one operation at a time. An executable model of selected instruction and microarchitectural behaviour, not an implementation of any real instruction set or processor. Why it matters here: it is the microscope the book controls completely, where a race is constructed rather than waited for. [ch01](#what-x-plus-plus-does)
+
 **Test-and-set.** An atomic exchange that writes a one and returns what was there. Why it matters
 here: It is the atomic that takes a lock and reports whether it was free, in one step.
 [ch05](#test-and-set-and-spinlocks)

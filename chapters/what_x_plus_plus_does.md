@@ -80,28 +80,69 @@ Try these, in order:
 3. **Switch the operation to *folded*.** The same count, in a loop the compiler could see all of.
    Still exact, and the time collapses. Keep this result in mind for *Break it again* below: the
    compiler did not run your loop.
-4. **Open the deterministic trace.** Set the schedule to *manual* and press *Step A* three times.
-   The trace is a model of the operations the source hides, and with one thread it shows them in
-   the only order they can happen: a load, an add, a store.
 
 ## What the source hides
 
 `counter++` is a read-modify-write. Whatever the instruction count, an increment of a variable in
 memory is a read of the word, an addition, and a write of the result, and the read and the write
-are two separate memory accesses. In the trace's notation:
+are two separate memory accesses. The book has a machine built to show exactly that. The
+teaching machine is a model: each thread has a few registers and a program counter, the threads
+share one memory, and each runs a short program written by hand to mirror the kernel's C. Here is
+its program for `increment`, beside the line it mirrors:
 
-```text
-r = load counter
-r = r + 1
-store counter = r
+```{include} _generated/counter-program-plain.md
 ```
 
-The C standard says the same thing in its own words. The increment reads the stored value and
-writes the new one, and a program in which another thread writes the variable with nothing to order
-the two accesses has a data race, which the standard declines to give any meaning at all. One
-thread cannot race with itself, so for now the three steps are only a fact about the shape of the
+Three operations for one line of C, and the register `r` is where the value lives between the
+load and the store. Now run them. The panel below is the same experiment in its *trace* mode. Set
+*Increments per thread in the trace* to one and the schedule to *manual*, then press *Step A*
+three times, watching the machine drawn above the table:
+
+```lab
+experiment: counter
+workers: 1
+mode: trace
+lock: workers
+operation: plain
+```
+
+The load copies the word from memory into the register and changes nothing in memory. The add
+changes the register and, again, nothing in memory. Only the store writes the word back. Between
+the first step and the third, memory still holds the old value, and the machine shows it holding
+it. With one thread the three steps can happen in no other order, so nothing goes wrong yet.
+
+The C standard describes the increment in its own words. It reads the stored value and writes the
+new one, and a program in which another thread writes the variable with nothing to order the two
+accesses has a data race, which the standard declines to give any meaning at all. One thread
+cannot race with itself, so for now the three steps are only a fact about the shape of the
 operation. Hold on to the shape: the window between the load and the store is where
 [ch02](#two-threads-one-variable) puts a second thread.
+
+**Two microscopes.** The teaching machine is the first, and everything under it is visible: every
+register, every word of memory, every step, in an order you chose, with the same result every
+time. That is also its limit. It is an executable model of selected instruction and
+microarchitectural behaviour, written for this book. It is not an implementation of any real
+instruction set or processor, and its programs are written by hand, not emitted by a compiler.
+The second microscope is the real toolchain: the kernel compiled by clang and run on your
+device's threads in *Run it* above, with the instructions clang emitted shown under *At the
+machine* below. Under it you can see the C, the instructions and the result, and not the rest:
+which thread ran when, what each core held in its cache, what the processor reordered. Those you
+infer from the result, and the chapters are about how.
+
+```text
+             THE TEACHING MACHINE                  YOUR MACHINE
+             fully visible                         partially visible
+
+  program    written by hand to mirror the C       the instructions clang emitted
+  schedule   yours, one step at a time             the scheduler's and the hardware's: hidden
+  state      every register and every word,        the result, read when the last worker
+             at every step                         finishes
+  result     the same every time: a model          one observation on one device: real
+```
+
+When a chapter needs a result to be certain, it uses the machine, where the result is
+constructed. When it needs the result to be real, it uses yours, where the result is observed.
+Every chapter from here on uses both, and each panel says which it is showing.
 
 ## At the machine
 

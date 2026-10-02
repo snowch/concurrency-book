@@ -52,10 +52,7 @@ grants only to a page served under two particular headers. The book arranges tha
 most browsers will run every experiment live. Where one will not, the page says so and offers
 the other two modes; nothing in the book depends on a live run to be readable.
 
-**Trace.** A deterministic model of the operations the program's threads perform, interleaved in
-an order you choose or step through by hand. A lost update is forced on the page, step by step,
-rather than left to luck. The trace is a model of the operations, not the compiled code, and
-every trace says so.
+**Trace.** A deterministic model of the operations the program's threads perform, interleaved in an order you choose or step through by hand, and drawn as a teaching machine: each thread's registers, program counter and store buffer, the shared memory, and the program it runs, written by hand to mirror the kernel. A lost update is forced on the page, step by step, rather than left to luck. The machine is an executable model of selected instruction and microarchitectural behaviour, not an implementation of any real instruction set or processor, and every trace says so.
 
 **At a desk.** The commands that build the same kernel for pthreads and run it on your own
 machine, where a measurement means more. [Appendix A](#reproducing-at-a-desk) has what you need.

@@ -1,7 +1,7 @@
 // The stepper over the deterministic model (trace.js): the reader picks a schedule, or steps
 // the threads by hand, and watches each thread's registers and the shared memory change.
 
-import { Machine, schedules, MAX_STEPS } from "./trace.js";
+import { Machine, schedules, MAX_STEPS, listing } from "./trace.js";
 import { el, fmt } from "./shell.js";
 
 const SCHEDULES = [
@@ -65,6 +65,10 @@ export class TraceView {
     this.threadButtons = el("span", "thread-steps");
     bar.append(this.threadButtons);
     root.append(bar);
+    // The teaching machine: the same model, drawn as a machine a reader can look into. Every
+    // step the bar takes advances this and the table below alike; there is one interpreter.
+    this.machine_ = el("div", "machine");
+    root.append(this.machine_);
     this.summary = el("p", "trace-summary");
     root.append(this.summary);
     this.tableWrap = el("div", "trace-table");
@@ -121,7 +125,90 @@ export class TraceView {
     this.#draw();
   }
 
+  // The machine view: a card per thread with its program counter, registers, next operation
+  // and store buffer; the shared memory; and the program, with each operation's C beside it.
+  #drawMachine() {
+    const m = this.machine;
+    const last = m.steps[m.steps.length - 1];
+    const before = m.steps[m.steps.length - 2];
+    const buffered = m.program.threads.some((t) => t.ops.some((o) => o.op === "store" && (o.buffered || o.release)));
+    const view = this.machine_;
+    view.replaceChildren();
+    const head = el("div", "machine-head");
+    head.append(el("b", "", "Teaching machine"), el("span", "", "a microscope, not your processor"));
+    view.append(head);
+    const cpus = el("div", "cpus");
+    m.threads.forEach((t, i) => {
+      const card = el("div", `cpu t${i}` + (last && last.thread === i ? " stepped" : ""));
+      card.dataset.thread = String(i);
+      const title = el("div", "cpu-title");
+      title.append(el("b", "", `Thread ${t.name}`), el("span", "", t.pc >= t.ops.length ? "finished" : `pc ${t.pc} of ${t.ops.length}`));
+      card.append(title);
+      const regs = el("div", "regs");
+      const names = Object.keys(t.regs);
+      if (!names.length) regs.append(el("span", "reg empty", "no register set yet"));
+      for (const r of names) {
+        const chip = el("span", "reg" + (last && last.thread === i && last.regs[r] !== (before ? before.regs[r] : undefined) && last.text.startsWith(`${r} =`) ? " changed" : ""));
+        chip.append(el("i", "", r), el("code", "", String(t.regs[r])));
+        regs.append(chip);
+      }
+      card.append(regs);
+      const next = el("div", "next");
+      if (t.asleep !== null) next.append(el("span", "asleep", `asleep on ${t.asleep}`));
+      else if (t.pc < t.ops.length) next.append(el("span", "", "next "), el("code", "", listing(t.ops[t.pc])));
+      else if (t.buffer.length) next.append(el("span", "", "next: the buffer drains"));
+      else next.append(el("span", "", "done"));
+      card.append(next);
+      if (buffered) {
+        const buf = el("div", "buffer");
+        buf.append(el("i", "", "store buffer"));
+        if (!t.buffer.length) buf.append(el("span", "empty", "empty"));
+        for (const w of t.buffer) buf.append(el("code", "", `${w.var} = ${w.value}`));
+        card.append(buf);
+      }
+      cpus.append(card);
+    });
+    view.append(cpus);
+    const mem = el("div", "memory");
+    mem.append(el("i", "", "memory"));
+    for (const [name, value] of Object.entries(m.memory)) {
+      const cell = el("span", "cell" + (last && before && last.memory[name] !== before.memory[name] ? " changed" : last && !before && value !== m.program.memory[name] ? " changed" : ""));
+      cell.append(el("code", "", name), el("b", "", String(value)));
+      mem.append(cell);
+    }
+    view.append(mem);
+    // One listing per distinct program: threads that run the same operations share it, each
+    // marking its own place.
+    const distinct = [];
+    m.threads.forEach((t, i) => {
+      const key = JSON.stringify(t.ops);
+      const found = distinct.find((d) => d.key === key);
+      if (found) found.threads.push(i); else distinct.push({ key, ops: t.ops, threads: [i] });
+    });
+    const programs = el("div", "programs");
+    for (const d of distinct) {
+      const box = el("div", "program");
+      const title = el("div", "program-title");
+      title.append(el("b", "", distinct.length > 1 ? `Program of ${d.threads.map((i) => m.threads[i].name).join(" and ")}` : "Program"), el("span", "", "hand-written to mirror the C; not compiler output"));
+      box.append(title);
+      const ol = el("ol", "listing");
+      d.ops.forEach((op, k) => {
+        const li = el("li", d.threads.some((i) => m.threads[i].pc === k) ? "at" : "");
+        const marks = d.threads.filter((i) => m.threads[i].pc === k).map((i) => m.threads[i].name).join("");
+        li.append(el("span", "mark", marks ? `${marks} ▶` : ""), el("span", "num", String(k)), el("code", "", listing(op)));
+        if (op.src) li.append(el("span", "src", op.src));
+        ol.append(li);
+      });
+      box.append(ol);
+      programs.append(box);
+    }
+    view.append(programs);
+    this.root.dataset.machineThreads = String(m.threads.length);
+    this.root.dataset.machineRegisters = String(m.threads.reduce((n, t) => n + Object.keys(t.regs).length, 0));
+  }
+
   #draw() {
+    this.#drawMachine();
     const m = this.machine;
     const [name, expected] = Object.entries(m.program.expected)[0];
     const value = m.memory[name];

@@ -116,6 +116,12 @@ async function exerciseCounter(page, base, label) {
   await stepper.locator('button[data-thread="0"]').click();
   await stepper.locator('button[data-thread="1"]').click();
   check(await stepper.getAttribute("data-trace-steps") === "2", `${label}: stepping by hand runs one operation per click`);
+  // The teaching machine is the same model drawn as a machine: a card per thread, the registers
+  // each has loaded, the shared memory, and the program with each thread's place marked.
+  check(await stepper.locator(".machine .cpu").count() === 2 && await stepper.getAttribute("data-machine-registers") === "2",
+    `${label}: the teaching machine shows two threads, each holding the counter it loaded`);
+  check((await stepper.locator(".machine .memory").innerText()).includes("counter") && await stepper.locator(".machine ol.listing li.at").count() >= 1,
+    `${label}: the machine shows the memory and marks each thread's place in the program`);
   if (shots) await lab.screenshot({ path: path.join(shots, `${label.replace(/\W+/g, "-")}-trace.png`) });
 }
 
@@ -136,6 +142,11 @@ async function exerciseCounter(page, base, label) {
   check(await one.locator(".controls .control.locked").count() === 1 && num(await one.getAttribute("data-workers")) === 1,
     "ch01 fixes the workers at one, shown as text");
   check(num(await one.getAttribute("data-lost")) === 0, "one worker alone loses nothing");
+  // Its second panel opens on the trace, where the teaching machine lists its program beside
+  // the line of C each group of operations mirrors.
+  const two = page.locator('.lab[data-experiment="counter"]').nth(1);
+  check(await two.getAttribute("data-mode") === "trace" && (await two.locator(".machine ol.listing .src").first().innerText()).includes("counter++"),
+    "ch01's second panel opens on the trace, with the C beside the machine's program");
   // The architecture tabs: a choice on one page is the choice on every page.
   const tabs = page.locator('.tab-set[data-group="arch"]').first();
   await tabs.locator('button[data-key="aarch64"]').click();

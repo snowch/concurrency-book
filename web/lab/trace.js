@@ -35,6 +35,36 @@
 // An atomic operation (rmw_add, xchg, cas) drains the thread's own buffer first, as a locked
 // instruction does on x86-64.
 
+// One operation as the program listing shows it before it runs: the notation of the steps,
+// without the outcome a step records. An op may carry `src`, the line of C it mirrors.
+export function listing(op) {
+  switch (op.op) {
+    case "load": return `${op.reg} = load ${op.var}`;
+    case "add": return `${op.reg} = ${op.from ?? op.reg} + ${op.imm}`;
+    case "store": {
+      const what = op.reg !== undefined ? op.reg : op.imm;
+      const how = op.seq_cst ? " (seq_cst)" : op.release ? " (release)" : op.buffered ? " (into the buffer)" : "";
+      return `store ${op.var} = ${what}${how}`;
+    }
+    case "drain": return op.var ? `drain ${op.var}` : "drain the buffer";
+    case "fence": return "fence";
+    case "rmw_add": return `atomic add ${op.var}, ${op.imm}` + (op.out ? ` -> ${op.out}` : "");
+    case "xchg": return `${op.out} = exchange ${op.var}, ${op.imm}`;
+    case "cas": return `${op.out} = cas ${op.var}: expect ${op.expect}, new ${op.reg}`;
+    case "jz": return `if ${op.reg} == 0 go to ${op.to}`;
+    case "jnz": return `if ${op.reg} != 0 go to ${op.to}`;
+    case "jeq": return `if ${op.reg} == ${op.imm} go to ${op.to}`;
+    case "jmp": return `go to ${op.to}`;
+    case "wait": return `wait ${op.var} while it is ${op.expect}`;
+    case "notify": return `notify ${op.var}${op.one ? " (one)" : ""}`;
+    case "loadi": return `${op.reg} = load ${op.base}[${op.index}]`;
+    case "storei": return `store ${op.base}[${op.index}] = ${op.reg !== undefined ? op.reg : op.imm}`;
+    case "cas2": return `${op.out} = cas ${op.vars[0]},${op.vars[1]}: expect ${op.expect[0]},${op.expect[1]}, new ${op.values[0]},${op.values[1]}`;
+    case "note": return op.text;
+    default: return op.op;
+  }
+}
+
 export class Machine {
   constructor(program) {
     this.program = program;

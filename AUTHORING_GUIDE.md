@@ -29,6 +29,10 @@ Not the order the chapter is read in.
 3. **The panel.** `web/lab/<name>.js`: live, trace and native, using the shell. The panel draws
    what the kernel reports and writes it on the mount element for the tests. If the chapter
    needs a trace, add its program to `programs.js` and its static tables to `tools/trace.mjs`.
+   Put `src`, the line of the kernel a group of operations mirrors, on the group's first
+   operation: the teaching machine shows it beside the program, and a listing in
+   `tools/trace.mjs` can quote the program beside its C. The machine view is the model drawn,
+   never a second model: it adds no operation, schedule or expected result of its own.
 4. **The checks.** The kernel's promises in `tests/threads.mjs`; the panel in
    `tests/browser/smoke.mjs`.
 5. **The fragments.** `make lower`, then read them. If a fragment does not show what the chapter

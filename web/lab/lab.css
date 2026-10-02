@@ -68,6 +68,52 @@
 .bar-row .bar-value { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
 .bar-row .bar-label { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* The teaching machine: the deterministic model drawn as a machine. A card per thread, the
+   shared memory, and the program with its C beside it. The same model as the table under it. */
+.machine { border: 1px solid var(--edge); border-radius: 6px; background: var(--panel); padding: .6rem .8rem .7rem; margin-bottom: .7rem; }
+.machine-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: .3rem .7rem; margin-bottom: .55rem; }
+.machine-head b { font: 600 10.5px/1 var(--chrome); letter-spacing: .06em; text-transform: uppercase; color: var(--on-accent);
+                  background: var(--accent); padding: .3rem .4rem .25rem; border-radius: 4px; }
+.machine-head span { font: 12.5px/1.4 var(--chrome); color: var(--faint); }
+.machine .cpus { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .5rem; }
+.machine .cpu { border: 1px solid var(--edge); border-radius: 5px; background: var(--bg); padding: .45rem .6rem .5rem; min-width: 0; }
+.machine .cpu.stepped { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.machine .cpu-title { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .35rem; }
+.machine .cpu-title b { font: 600 13px/1.2 var(--chrome); }
+.machine .cpu.t0 .cpu-title b { color: var(--accent); } .machine .cpu.t1 .cpu-title b { color: var(--warn); }
+.machine .cpu.t2 .cpu-title b { color: var(--go); } .machine .cpu.t3 .cpu-title b { color: var(--tok-number); }
+.machine .cpu-title span { font: 11px/1.2 var(--chrome); color: var(--faint); font-variant-numeric: tabular-nums; }
+.machine .regs { display: flex; flex-wrap: wrap; gap: .3rem; margin-bottom: .35rem; min-height: 1.4rem; }
+.machine .reg { display: inline-flex; align-items: baseline; gap: .3rem; border: 1px solid var(--edge); border-radius: 4px; padding: .1rem .4rem; font-size: 12.5px; }
+.machine .reg i { font: 11px/1 var(--chrome); color: var(--faint); font-style: normal; }
+.machine .reg code { font-variant-numeric: tabular-nums; }
+.machine .reg.changed { border-color: var(--accent); background: var(--wash); }
+.machine .reg.empty { border-style: dashed; color: var(--faint); font: 11.5px/1.2 var(--chrome); }
+.machine .next { font: 12px/1.4 var(--chrome); color: var(--muted); }
+.machine .next code { font-size: 12px; }
+.machine .asleep { color: var(--warn); font-weight: 600; }
+.machine .buffer { margin-top: .35rem; font: 11.5px/1.4 var(--chrome); display: flex; flex-wrap: wrap; gap: .3rem; align-items: baseline; }
+.machine .buffer i { font-style: normal; color: var(--faint); text-transform: uppercase; letter-spacing: .05em; font-size: 10.5px; }
+.machine .buffer code { color: var(--warn); font-size: 11.5px; border: 1px solid var(--edge); border-radius: 4px; padding: .05rem .35rem; }
+.machine .buffer .empty { color: var(--faint); }
+.machine .memory { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem .6rem; margin: .55rem 0 .45rem; padding: .4rem .6rem; border: 1px solid var(--edge); border-radius: 5px; background: var(--bg); }
+.machine .memory i { font: 600 10.5px/1 var(--chrome); font-style: normal; color: var(--faint); letter-spacing: .05em; text-transform: uppercase; margin-right: .2rem; }
+.machine .cell { display: inline-flex; align-items: baseline; gap: .35rem; }
+.machine .cell code { font-size: 12.5px; } .machine .cell b { font: 600 14px/1 var(--chrome); font-variant-numeric: tabular-nums; }
+.machine .cell.changed b { color: var(--on-accent); background: var(--accent); padding: .15rem .35rem; border-radius: 4px; }
+.machine .programs { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .5rem; }
+.machine .program { border: 1px solid var(--edge); border-radius: 5px; background: var(--bg); padding: .4rem .6rem .45rem; min-width: 0; overflow-x: auto; }
+.machine .program-title { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .2rem .6rem; align-items: baseline; margin-bottom: .25rem; }
+.machine .program-title b { font: 600 12.5px/1.2 var(--chrome); }
+.machine .program-title span { font: 11px/1.3 var(--chrome); color: var(--faint); }
+.machine ol.listing { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+.machine ol.listing li { display: grid; grid-template-columns: 2.6rem 1.6rem minmax(0, auto) 1fr; gap: .4rem; align-items: baseline; padding: .08rem 0; white-space: nowrap; }
+.machine ol.listing li.at { background: var(--wash); border-radius: 3px; }
+.machine ol.listing .mark { color: var(--accent); font: 600 11px/1.2 var(--chrome); text-align: right; }
+.machine ol.listing .num { color: var(--faint); font-variant-numeric: tabular-nums; text-align: right; font-size: 11px; }
+.machine ol.listing .src { color: var(--faint); font: 11.5px/1.3 var(--mono); }
+.machine ol.listing .src::before { content: "\2190  "; }
+
 /* The deterministic trace: a schedule, a stepper and the table of steps. */
 .trace-controls { display: flex; flex-wrap: wrap; gap: .5rem 1.4rem; margin-bottom: .6rem; }
 .trace-controls label { display: flex; align-items: center; gap: .5rem; }

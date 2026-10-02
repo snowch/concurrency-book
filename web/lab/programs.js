@@ -8,14 +8,25 @@ const threadsOf = (n, ops) => Array.from({ length: n }, (_, i) => ({ name: NAMES
 // The counter kernel. `operation` is the page's: plain (load, add, store, per increment),
 // atomic (one indivisible add per increment), split (an atomic load, an add, an atomic store:
 // three steps again) or folded (one load, one add of the whole count, one store per thread).
+// The first operation of each group carries `src`, the line of counter.c the group mirrors, which
+// the machine view and the chapters' listings show beside it. The model ignores it.
 export function counter({ threads = 2, iterations = 2, operation = "plain" } = {}) {
   const ops = [];
   if (operation === "folded") {
-    ops.push({ op: "load", reg: "r", var: "counter" }, { op: "add", reg: "r", imm: iterations }, { op: "store", var: "counter", reg: "r" });
+    ops.push(
+      { op: "load", reg: "r", var: "counter", src: "for (int i = 0; i < n; i++) counter++;" },
+      { op: "add", reg: "r", imm: iterations },
+      { op: "store", var: "counter", reg: "r" },
+    );
   } else {
     for (let i = 0; i < iterations; i++) {
-      if (operation === "atomic") ops.push({ op: "rmw_add", var: "counter", imm: 1 });
-      else ops.push({ op: "load", reg: "r", var: "counter" }, { op: "add", reg: "r", imm: 1 }, { op: "store", var: "counter", reg: "r" });
+      if (operation === "atomic") ops.push({ op: "rmw_add", var: "counter", imm: 1, src: "atomic_fetch_add_explicit(&atomic_counter, 1, memory_order_relaxed);" });
+      else if (operation === "split") ops.push(
+        { op: "load", reg: "r", var: "counter", src: "int seen = atomic_load_explicit(&atomic_counter, memory_order_relaxed);" },
+        { op: "add", reg: "r", imm: 1, src: "atomic_store_explicit(&atomic_counter, seen + 1, memory_order_relaxed);" },
+        { op: "store", var: "counter", reg: "r" },
+      );
+      else ops.push({ op: "load", reg: "r", var: "counter", src: "counter++;" }, { op: "add", reg: "r", imm: 1 }, { op: "store", var: "counter", reg: "r" });
     }
   }
   return { memory: { counter: 0 }, threads: threadsOf(threads, () => [...ops]), expected: { counter: threads * iterations } };

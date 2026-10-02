@@ -133,11 +133,17 @@ front of you and leave the rest, and the tabs remember your choice. The *what th
 you* section is where the book says what the experiment did not prove, and is worth a glance
 before you draw a conclusion of your own.
 
-What you can always skip: a folded note, the instruction sets you do not care about, and the
-*At a desk* commands, which are for readers who want the same experiment on their own machine
-rather than in the browser. What you should not skip: a run. The page is built so that the
-result comes from the kernel and not from the author, and a reader who presses *Run* is holding
-the book to that.
+The chapters look through two microscopes. The teaching machine is one the book controls
+completely: a model with a few registers per thread, a shared memory and a program written by hand
+to mirror the kernel, which you step one operation at a time and can see all of. The real toolchain
+is the other: the C, the compiler, the instruction set and the processor, where some layers can be
+seen and some cannot. The first explains; the second is the evidence. The machine is a model of
+selected instruction and microarchitectural behaviour, not an implementation of any real
+instruction set or processor, and every panel says so. What you can always skip: a folded note, the
+instruction sets you do not care about, and the *At a desk* commands, which are for readers who
+want the same experiment on their own machine rather than in the browser. What you should not skip:
+a run. The page is built so that the result comes from the kernel and not from the author, and a
+reader who presses *Run* is holding the book to that.
 
 ## Where this starts
 

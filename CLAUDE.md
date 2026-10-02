@@ -136,8 +136,7 @@ nothing. Keep it that way: a cross-origin resource without a CORP header breaks 
 1. **The interactive UI is a view of the implementation, never a scripted animation.** A count on
    the page was read from the kernel's shared memory after the workers finished. A time is wall
    time on the reader's device, and the page says so. JavaScript draws; it never computes a
-   result a kernel reports. The one exception is the trace, which is a model, and every trace says
-   it is a model and not the compiled code.
+   result a kernel reports. The one exception is the trace, which is a model, and every trace says it is a model and not the compiled code. The page draws that model as a teaching machine (registers, program counter, store buffer, memory, program); the machine view is a view of `web/lab/trace.js` and adds no semantics, scheduler, interpreter or expected results of its own, and its programs are written by hand to mirror a kernel, never presented as compiler output.
 2. **No number typed into prose.** Lost updates, times, rates and retry counts come from a live
    run, from a trace table under `chapters/_generated/`, or from the reader's own device.
    `scripts/verify-numbers.py` fails the build otherwise. A number that must be typed takes
@@ -176,7 +175,8 @@ its identity is its slug. Never put a chapter number in a slug, label or file na
 **An experiment.** A directory `experiments/<name>/` with the kernel and `experiment.json`
 (`tools/experiments.py` says what the contract must hold); its name in `tools/outline.EXPERIMENTS`
 and in some chapter's `experiments`; a panel `web/lab/<name>.js` exporting `mount(shell)`; a trace
-program in `web/lab/programs.js` if it offers a trace, and its tables in `tools/trace.mjs`; its
+program in `web/lab/programs.js` if it offers a trace (with `src` on the first operation of each
+group, the kernel line it mirrors), and its tables and any listing in `tools/trace.mjs`; its
 checks in `tests/threads.mjs` and `tests/browser/smoke.mjs`; and an entry in Appendix B. `make lower`
 writes the fragments the contract's `lowerings` ask for.
 
